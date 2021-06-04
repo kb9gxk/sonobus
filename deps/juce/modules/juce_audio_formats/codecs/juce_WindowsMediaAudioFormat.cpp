@@ -33,7 +33,7 @@ class JuceIStream   : public ComBaseClassHelper<IStream>
 {
 public:
     JuceIStream (InputStream& in) noexcept
-        : ComBaseClassHelper<IStream> (0), source (in)
+        : ComBaseClassHelper (0), source (in)
     {
     }
 
@@ -231,6 +231,7 @@ public:
 
             for (int i = 0; i < numDestChannels; ++i)
             {
+                JUCE_BEGIN_IGNORE_WARNINGS_MSVC (28182)
                 jassert (destSamples[i] != nullptr);
 
                 auto srcChan = jmin (i, (int) numChannels - 1);
@@ -242,6 +243,7 @@ public:
                     dst[j] = ((uint32) *src) << 16;
                     src += numChannels;
                 }
+                JUCE_END_IGNORE_WARNINGS_MSVC
             }
 
             startSampleInFile += numToDo;
@@ -260,7 +262,7 @@ private:
 
     void checkCoInitialiseCalled()
     {
-        CoInitialize (0);
+        ignoreUnused (CoInitialize (0));
     }
 
     void scanFileForDetails()

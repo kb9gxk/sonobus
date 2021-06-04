@@ -35,7 +35,7 @@ void* OpenGLHelpers::getExtensionFunction (const char* functionName)
 {
    #if JUCE_WINDOWS
     return (void*) wglGetProcAddress (functionName);
-   #elif JUCE_LINUX
+   #elif JUCE_LINUX || JUCE_BSD
     return (void*) glXGetProcAddress ((const GLubyte*) functionName);
    #else
     static void* handle = dlopen (nullptr, RTLD_LAZY);
@@ -83,7 +83,6 @@ void OpenGLHelpers::enableScissorTest (Rectangle<int> clip)
 
 String OpenGLHelpers::translateVertexShaderToV3 (const String& code)
 {
-   #if JUCE_OPENGL3
     if (OpenGLShaderProgram::getLanguageVersion() > 1.2)
     {
         String output;
@@ -112,21 +111,18 @@ String OpenGLHelpers::translateVertexShaderToV3 (const String& code)
 
         return JUCE_GLSL_VERSION "\n" + output.replace ("varying", "out");
     }
-   #endif
 
     return code;
 }
 
 String OpenGLHelpers::translateFragmentShaderToV3 (const String& code)
 {
-   #if JUCE_OPENGL3
     if (OpenGLShaderProgram::getLanguageVersion() > 1.2)
         return JUCE_GLSL_VERSION "\n"
                "out " JUCE_MEDIUMP " vec4 fragColor;\n"
                 + code.replace ("varying", "in")
                       .replace ("texture2D", "texture")
                       .replace ("gl_FragColor", "fragColor");
-   #endif
 
     return code;
 }
