@@ -17183,126 +17183,884 @@ const char* incoming_disallowed_svg = (const char*) temp_binary_data_34;
 
 //================== keyboard.svg ==================
 static const unsigned char temp_binary_data_35[] =
-"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-"<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n"
-"<svg version=\"1.1\"\n"
-"\t id=\"svg1437\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:cc=\"http://creativecommons.org/ns#\" xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" xmlns:svg=\"http://www.w3.org/2000/svg\" xmlns:sodipodi=\"http://sodipodi.sourceforg"
-"e.net/DTD/sodipodi-0.dtd\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" sodipodi:docname=\"folder_icon.svg\" inkscape:version=\"1.0 (4035a4f, 2020-05-01)\" inkscape:export-filename=\"/Users/jesse/src/sonoaudio/tonalenergy/images/cir"
-"cleslash_icon.png\" inkscape:export-xdpi=\"102.4\" inkscape:export-ydpi=\"102.4\"\n"
-"\t xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" x=\"0px\" y=\"0px\" width=\"30px\" height=\"30px\"\n"
-"\t viewBox=\"0 0 30 30\" enable-background=\"new 0 0 30 30\" xml:space=\"preserve\">\n"
-"<path id=\"path2896\" fill=\"#E5E5E5\" d=\"M1.97,8.024v13.918c0,0.773,0.679,1.453,1.454,1.453h23.267c0.738,0,1.338-0.652,1.338-1.453\n"
-"\tV8.024c0-0.843-0.607-1.419-1.389-1.419H3.344C2.656,6.605,1.97,7.181,1.97,8.024z M27.1,21.942c0,0.251-0.156,0.523-0.406,0.523\n"
-"\tH3.424c-0.259,0-0.523-0.266-0.523-0.523V8.039c0-0.256,0.209-0.465,0.466-0.465h23.268c0.256,0,0.465,0.208,0.465,0.465V21.942z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M23.482,19.49c0-0.75,0-0.75-1-0.75H7.545c-1,0-1,0-1,0.75l0,0c0,0.75,0,0.75,1,0.75h14.937\n"
-"\tC23.482,20.24,23.482,20.24,23.482,19.49L23.482,19.49z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M9.715,16.508c0-0.75,0-0.75-0.734-0.75H8.95c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75\n"
-"\th0.031C9.715,17.258,9.715,17.258,9.715,16.508L9.715,16.508z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M12.694,16.508c0-0.75,0-0.75-0.734-0.75h-0.031c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75\n"
-"\th0.031C12.694,17.258,12.694,17.258,12.694,16.508L12.694,16.508z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M15.736,16.508c0-0.75,0-0.75-0.735-0.75h-0.03c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75\n"
-"\th0.03C15.736,17.258,15.736,17.258,15.736,16.508L15.736,16.508z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M18.736,16.508c0-0.75,0-0.75-0.735-0.75h-0.03c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75\n"
-"\th0.03C18.736,17.258,18.736,17.258,18.736,16.508L18.736,16.508z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M21.736,16.508c0-0.75,0-0.75-0.735-0.75h-0.03c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75\n"
-"\th0.03C21.736,17.258,21.736,17.258,21.736,16.508L21.736,16.508z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M8.231,13.492c0-0.75,0-0.75-0.735-0.75h-0.03c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75\n"
-"\th0.03C8.231,14.242,8.231,14.242,8.231,13.492L8.231,13.492z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M11.21,13.492c0-0.75,0-0.75-0.734-0.75h-0.031c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75\n"
-"\th0.031C11.21,14.242,11.21,14.242,11.21,13.492L11.21,13.492z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M14.252,13.492c0-0.75,0-0.75-0.735-0.75h-0.03c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75\n"
-"\th0.03C14.252,14.242,14.252,14.242,14.252,13.492L14.252,13.492z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M17.252,13.492c0-0.75,0-0.75-0.735-0.75h-0.03c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75\n"
-"\th0.03C17.252,14.242,17.252,14.242,17.252,13.492L17.252,13.492z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M20.252,13.492c0-0.75,0-0.75-0.735-0.75h-0.03c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75\n"
-"\th0.03C20.252,14.242,20.252,14.242,20.252,13.492L20.252,13.492z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M23.248,13.492c0-0.75,0-0.75-0.735-0.75h-0.03c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75\n"
-"\th0.03C23.248,14.242,23.248,14.242,23.248,13.492L23.248,13.492z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M6.744,10.508c0-0.75,0-0.75-0.735-0.75h-0.03c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75\n"
-"\th0.03C6.744,11.258,6.744,11.258,6.744,10.508L6.744,10.508z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M9.723,10.508c0-0.75,0-0.75-0.734-0.75H8.957c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75\n"
-"\th0.031C9.723,11.258,9.723,11.258,9.723,10.508L9.723,10.508z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M12.765,10.508c0-0.75,0-0.75-0.735-0.75H12c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75h0.03\n"
-"\tC12.765,11.258,12.765,11.258,12.765,10.508L12.765,10.508z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M15.764,10.508c0-0.75,0-0.75-0.734-0.75H15c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75h0.03\n"
-"\tC15.764,11.258,15.764,11.258,15.764,10.508L15.764,10.508z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M18.764,10.508c0-0.75,0-0.75-0.734-0.75h-0.03c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75\n"
-"\th0.03C18.764,11.258,18.764,11.258,18.764,10.508L18.764,10.508z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M21.76,10.508c0-0.75,0-0.75-0.734-0.75h-0.03c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75\n"
-"\th0.03C21.76,11.258,21.76,11.258,21.76,10.508L21.76,10.508z\"/>\n"
-"<path fill=\"#E5E5E5\" d=\"M24.791,10.508c0-0.75,0-0.75-0.734-0.75h-0.029c-0.736,0-0.736,0-0.736,0.75l0,0c0,0.75,0,0.75,0.736,0.75\n"
-"\th0.029C24.791,11.258,24.791,11.258,24.791,10.508L24.791,10.508z\"/>\n"
-"<rect x=\"274.167\" y=\"176.833\" fill=\"#262626\" width=\"1.333\" height=\"0\"/>\n"
+"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
+"<svg\n"
+"   version=\"1.1\"\n"
+"   id=\"svg1437\"\n"
+"   sodipodi:docname=\"keyboard.svg\"\n"
+"   inkscape:version=\"1.2 (dc2aeda, 2022-05-15)\"\n"
+"   inkscape:export-filename=\"/Users/jesse/src/sonoaudio/tonalenergy/images/circleslash_icon.png\"\n"
+"   inkscape:export-xdpi=\"102.4\"\n"
+"   inkscape:export-ydpi=\"102.4\"\n"
+"   x=\"0px\"\n"
+"   y=\"0px\"\n"
+"   width=\"30px\"\n"
+"   height=\"30px\"\n"
+"   viewBox=\"0 0 30 30\"\n"
+"   enable-background=\"new 0 0 30 30\"\n"
+"   xml:space=\"preserve\"\n"
+"   xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\"\n"
+"   xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\"\n"
+"   xmlns=\"http://www.w3.org/2000/svg\"\n"
+"   xmlns:svg=\"http://www.w3.org/2000/svg\"><defs\n"
+"   id=\"defs15271\" /><sodipodi:namedview\n"
+"   id=\"namedview15269\"\n"
+"   pagecolor=\"#505050\"\n"
+"   bordercolor=\"#ffffff\"\n"
+"   borderopacity=\"1\"\n"
+"   inkscape:showpageshadow=\"0\"\n"
+"   inkscape:pageopacity=\"0\"\n"
+"   inkscape:pagecheckerboard=\"1\"\n"
+"   inkscape:deskcolor=\"#505050\"\n"
+"   showgrid=\"false\"\n"
+"   inkscape:zoom=\"7.8666667\"\n"
+"   inkscape:cx=\"16.970339\"\n"
+"   inkscape:cy=\"18.559322\"\n"
+"   inkscape:window-width=\"1603\"\n"
+"   inkscape:window-height=\"618\"\n"
+"   inkscape:window-x=\"1909\"\n"
+"   inkscape:window-y=\"338\"\n"
+"   inkscape:window-maximized=\"0\"\n"
+"   inkscape:current-layer=\"svg1437\" />\n"
+"<rect\n"
+"   style=\"fill:none;stroke:none;stroke-width:0;stroke-dasharray:none\"\n"
+"   id=\"rect22547\"\n"
+"   width=\"30\"\n"
+"   height=\"30\"\n"
+"   x=\"0\"\n"
+"   y=\"0\" /><path\n"
+"   id=\"path2896\"\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M1.97,8.024v13.918c0,0.773,0.679,1.453,1.454,1.453h23.267c0.738,0,1.338-0.652,1.338-1.453  V8.024c0-0.843-0.607-1.419-1.389-1.419H3.344C2.656,6.605,1.97,7.181,1.97,8.024z M27.1,21.942c0,0.251-0.156,0.523-0.406,0.523  H3.424c-0.259,0-0.523-0.26"
+"6-0.523-0.523V8.039c0-0.256,0.209-0.465,0.466-0.465h23.268c0.256,0,0.465,0.208,0.465,0.465V21.942z\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M23.482,19.49c0-0.75,0-0.75-1-0.75H7.545c-1,0-1,0-1,0.75l0,0c0,0.75,0,0.75,1,0.75h14.937  C23.482,20.24,23.482,20.24,23.482,19.49L23.482,19.49z\"\n"
+"   id=\"path15228\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M9.715,16.508c0-0.75,0-0.75-0.734-0.75H8.95c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75  h0.031C9.715,17.258,9.715,17.258,9.715,16.508L9.715,16.508z\"\n"
+"   id=\"path15230\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M12.694,16.508c0-0.75,0-0.75-0.734-0.75h-0.031c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75  h0.031C12.694,17.258,12.694,17.258,12.694,16.508L12.694,16.508z\"\n"
+"   id=\"path15232\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M15.736,16.508c0-0.75,0-0.75-0.735-0.75h-0.03c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75  h0.03C15.736,17.258,15.736,17.258,15.736,16.508L15.736,16.508z\"\n"
+"   id=\"path15234\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M18.736,16.508c0-0.75,0-0.75-0.735-0.75h-0.03c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75  h0.03C18.736,17.258,18.736,17.258,18.736,16.508L18.736,16.508z\"\n"
+"   id=\"path15236\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M21.736,16.508c0-0.75,0-0.75-0.735-0.75h-0.03c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75  h0.03C21.736,17.258,21.736,17.258,21.736,16.508L21.736,16.508z\"\n"
+"   id=\"path15238\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M8.231,13.492c0-0.75,0-0.75-0.735-0.75h-0.03c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75  h0.03C8.231,14.242,8.231,14.242,8.231,13.492L8.231,13.492z\"\n"
+"   id=\"path15240\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M11.21,13.492c0-0.75,0-0.75-0.734-0.75h-0.031c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75  h0.031C11.21,14.242,11.21,14.242,11.21,13.492L11.21,13.492z\"\n"
+"   id=\"path15242\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M14.252,13.492c0-0.75,0-0.75-0.735-0.75h-0.03c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75  h0.03C14.252,14.242,14.252,14.242,14.252,13.492L14.252,13.492z\"\n"
+"   id=\"path15244\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M17.252,13.492c0-0.75,0-0.75-0.735-0.75h-0.03c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75  h0.03C17.252,14.242,17.252,14.242,17.252,13.492L17.252,13.492z\"\n"
+"   id=\"path15246\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M20.252,13.492c0-0.75,0-0.75-0.735-0.75h-0.03c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75  h0.03C20.252,14.242,20.252,14.242,20.252,13.492L20.252,13.492z\"\n"
+"   id=\"path15248\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M23.248,13.492c0-0.75,0-0.75-0.735-0.75h-0.03c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75  h0.03C23.248,14.242,23.248,14.242,23.248,13.492L23.248,13.492z\"\n"
+"   id=\"path15250\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M6.744,10.508c0-0.75,0-0.75-0.735-0.75h-0.03c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75  h0.03C6.744,11.258,6.744,11.258,6.744,10.508L6.744,10.508z\"\n"
+"   id=\"path15252\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M9.723,10.508c0-0.75,0-0.75-0.734-0.75H8.957c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75  h0.031C9.723,11.258,9.723,11.258,9.723,10.508L9.723,10.508z\"\n"
+"   id=\"path15254\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M12.765,10.508c0-0.75,0-0.75-0.735-0.75H12c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75h0.03  C12.765,11.258,12.765,11.258,12.765,10.508L12.765,10.508z\"\n"
+"   id=\"path15256\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M15.764,10.508c0-0.75,0-0.75-0.734-0.75H15c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75h0.03  C15.764,11.258,15.764,11.258,15.764,10.508L15.764,10.508z\"\n"
+"   id=\"path15258\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M18.764,10.508c0-0.75,0-0.75-0.734-0.75h-0.03c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75  h0.03C18.764,11.258,18.764,11.258,18.764,10.508L18.764,10.508z\"\n"
+"   id=\"path15260\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M21.76,10.508c0-0.75,0-0.75-0.734-0.75h-0.03c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75  h0.03C21.76,11.258,21.76,11.258,21.76,10.508L21.76,10.508z\"\n"
+"   id=\"path15262\" />\n"
+"<path\n"
+"   fill=\"#E5E5E5\"\n"
+"   d=\"M24.791,10.508c0-0.75,0-0.75-0.734-0.75h-0.029c-0.736,0-0.736,0-0.736,0.75l0,0c0,0.75,0,0.75,0.736,0.75  h0.029C24.791,11.258,24.791,11.258,24.791,10.508L24.791,10.508z\"\n"
+"   id=\"path15264\" />\n"
+"<rect\n"
+"   x=\"274.167\"\n"
+"   y=\"176.833\"\n"
+"   fill=\"#262626\"\n"
+"   width=\"1.333\"\n"
+"   height=\"0\"\n"
+"   id=\"rect15266\" />\n"
 "</svg>\n";
 
 const char* keyboard_svg = (const char*) temp_binary_data_35;
 
 //================== keyboard_disabled.svg ==================
 static const unsigned char temp_binary_data_36[] =
-"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-"<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n"
-"<svg version=\"1.1\"\n"
-"\t id=\"svg1437\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:cc=\"http://creativecommons.org/ns#\" xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" xmlns:svg=\"http://www.w3.org/2000/svg\" xmlns:sodipodi=\"http://sodipodi.sourceforg"
-"e.net/DTD/sodipodi-0.dtd\" xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" sodipodi:docname=\"folder_icon.svg\" inkscape:version=\"1.0 (4035a4f, 2020-05-01)\" inkscape:export-filename=\"/Users/jesse/src/sonoaudio/tonalenergy/images/cir"
-"cleslash_icon.png\" inkscape:export-xdpi=\"102.4\" inkscape:export-ydpi=\"102.4\"\n"
-"\t xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" x=\"0px\" y=\"0px\" width=\"30px\" height=\"30px\"\n"
-"\t viewBox=\"0 0 30 30\" enable-background=\"new 0 0 30 30\" xml:space=\"preserve\">\n"
-"<path fill=\"#FF5555\" d=\"M9.715,16.508c0-0.75,0-0.75-0.734-0.75H8.95c-0.733,0-0.733,0-0.733,0.75l0,0c0,0.75,0,0.75,0.733,0.75\n"
-"\th0.031C9.715,17.258,9.715,17.258,9.715,16.508L9.715,16.508z\"/>\n"
-"<path fill=\"#FF5555\" d=\"M12.694,16.508c0-0.75,0-0.75-0.734-0.75h-0.031c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75\n"
-"\th0.031C12.694,17.258,12.694,17.258,12.694,16.508L12.694,16.508z\"/>\n"
-"<path fill=\"#FF5555\" d=\"M15.736,16.508c0-0.75,0-0.75-0.735-0.75h-0.03c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75\n"
-"\th0.03C15.736,17.258,15.736,17.258,15.736,16.508L15.736,16.508z\"/>\n"
-"<path fill=\"#FF5555\" d=\"M21.736,16.508c0-0.75,0-0.75-0.735-0.75h-0.03c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75\n"
-"\th0.03C21.736,17.258,21.736,17.258,21.736,16.508L21.736,16.508z\"/>\n"
-"<path fill=\"#FF5555\" d=\"M8.231,13.492c0-0.75,0-0.75-0.735-0.75h-0.03c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75\n"
-"\th0.03C8.231,14.242,8.231,14.242,8.231,13.492L8.231,13.492z\"/>\n"
-"<path fill=\"#FF5555\" d=\"M11.21,13.492c0-0.75,0-0.75-0.734-0.75h-0.031c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75\n"
-"\th0.031C11.21,14.242,11.21,14.242,11.21,13.492L11.21,13.492z\"/>\n"
-"<path fill=\"#FF5555\" d=\"M14.252,13.844l-0.83-0.969l-0.156-0.133c-0.514,0-0.514,0-0.514,0.75l0,0c0,0.75,0,0.75,0.735,0.75h0.03\n"
-"\tc0.735,0,0.436-0.75,0.436-0.75L14.252,13.844z\"/>\n"
-"<path fill=\"#FF5555\" d=\"M20.252,13.492c0-0.75,0-0.75-0.734-0.75h-0.031c-0.733,0-0.733,0-0.733,0.75l0,0c0,0.75,0,0.75,0.733,0.75\n"
-"\th0.031C20.252,14.242,20.252,14.242,20.252,13.492L20.252,13.492z\"/>\n"
-"<path fill=\"#FF5555\" d=\"M23.248,13.492c0-0.75,0-0.75-0.734-0.75h-0.031c-0.733,0-0.733,0-0.733,0.75l0,0c0,0.75,0,0.75,0.733,0.75\n"
-"\th0.031C23.248,14.242,23.248,14.242,23.248,13.492L23.248,13.492z\"/>\n"
-"<path fill=\"#FF5555\" d=\"M6.744,10.508c0-0.75,0-0.75-0.734-0.75h-0.03c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75\n"
-"\th0.03C6.744,11.258,6.744,11.258,6.744,10.508L6.744,10.508z\"/>\n"
-"<path fill=\"#FF5555\" d=\"M9.723,10.508c0-0.75,0-0.75-0.734-0.75H8.957c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75\n"
-"\th0.031C9.723,11.258,9.723,11.258,9.723,10.508L9.723,10.508z\"/>\n"
-"<path fill=\"#FF5555\" d=\"M15.764,10.508c0-0.75,0-0.75-0.734-0.75H15c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75h0.03\n"
-"\tC15.764,11.258,15.764,11.258,15.764,10.508L15.764,10.508z\"/>\n"
-"<path fill=\"#FF5555\" d=\"M18.764,10.508c0-0.75,0-0.75-0.734-0.75H18c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75\n"
-"\th0.029C18.764,11.258,18.764,11.258,18.764,10.508L18.764,10.508z\"/>\n"
-"<path fill=\"#FF5555\" d=\"M21.76,10.508c0-0.75,0-0.75-0.734-0.75h-0.029c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75\n"
-"\th0.029C21.76,11.258,21.76,11.258,21.76,10.508L21.76,10.508z\"/>\n"
-"<path fill=\"#FF5555\" d=\"M24.791,10.508c0-0.75,0-0.75-0.734-0.75h-0.029c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75\n"
-"\th0.029C24.791,11.258,24.791,11.258,24.791,10.508L24.791,10.508z\"/>\n"
-"<polygon fill=\"#262626\" points=\"274.167,176.833 275.5,176.833 275.5,176.833 \"/>\n"
-"<rect x=\"-0.52\" y=\"14.492\" transform=\"matrix(0.7071 0.7071 -0.7071 0.7071 14.9968 -6.2032)\" fill=\"#FF5555\" width=\"31.012\" height=\"1.016\"/>\n"
-"<g>\n"
-"\t<path fill=\"#FF5555\" d=\"M12.751,10.614c0-0.036,0-0.065,0-0.106c0-0.75,0-0.75-0.733-0.75h-0.03c-0.035,0-0.061,0-0.092,0\n"
-"\t\tL12.751,10.614z\"/>\n"
-"\t<path fill=\"#FF5555\" d=\"M11.254,10.555c0.001,0.688,0.02,0.703,0.704,0.703L11.254,10.555z\"/>\n"
+"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
+"<svg\n"
+"   version=\"1.1\"\n"
+"   id=\"svg1437\"\n"
+"   sodipodi:docname=\"keyboard_disabled.svg\"\n"
+"   inkscape:version=\"1.2 (dc2aeda, 2022-05-15)\"\n"
+"   inkscape:export-filename=\"/Users/jesse/src/sonoaudio/tonalenergy/images/circleslash_icon.png\"\n"
+"   inkscape:export-xdpi=\"102.4\"\n"
+"   inkscape:export-ydpi=\"102.4\"\n"
+"   x=\"0px\"\n"
+"   y=\"0px\"\n"
+"   width=\"30px\"\n"
+"   height=\"30px\"\n"
+"   viewBox=\"0 0 30 30\"\n"
+"   enable-background=\"new 0 0 30 30\"\n"
+"   xml:space=\"preserve\"\n"
+"   xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\"\n"
+"   xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\"\n"
+"   xmlns=\"http://www.w3.org/2000/svg\"\n"
+"   xmlns:svg=\"http://www.w3.org/2000/svg\"><defs\n"
+"   id=\"defs15538\" /><sodipodi:namedview\n"
+"   id=\"namedview15536\"\n"
+"   pagecolor=\"#505050\"\n"
+"   bordercolor=\"#ffffff\"\n"
+"   borderopacity=\"1\"\n"
+"   inkscape:showpageshadow=\"0\"\n"
+"   inkscape:pageopacity=\"0\"\n"
+"   inkscape:pagecheckerboard=\"1\"\n"
+"   inkscape:deskcolor=\"#505050\"\n"
+"   showgrid=\"false\"\n"
+"   inkscape:zoom=\"7.8666667\"\n"
+"   inkscape:cx=\"15\"\n"
+"   inkscape:cy=\"5.3389831\"\n"
+"   inkscape:window-width=\"1309\"\n"
+"   inkscape:window-height=\"456\"\n"
+"   inkscape:window-x=\"1884\"\n"
+"   inkscape:window-y=\"842\"\n"
+"   inkscape:window-maximized=\"0\"\n"
+"   inkscape:current-layer=\"svg1437\" />\n"
+"<rect\n"
+"   style=\"fill:none;stroke:none;stroke-width:0;stroke-dasharray:none\"\n"
+"   id=\"rect22547\"\n"
+"   width=\"30\"\n"
+"   height=\"30\"\n"
+"   x=\"0\"\n"
+"   y=\"0\" /><path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M9.715,16.508c0-0.75,0-0.75-0.734-0.75H8.95c-0.733,0-0.733,0-0.733,0.75l0,0c0,0.75,0,0.75,0.733,0.75  h0.031C9.715,17.258,9.715,17.258,9.715,16.508L9.715,16.508z\"\n"
+"   id=\"path15481\" />\n"
+"<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M12.694,16.508c0-0.75,0-0.75-0.734-0.75h-0.031c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75  h0.031C12.694,17.258,12.694,17.258,12.694,16.508L12.694,16.508z\"\n"
+"   id=\"path15483\" />\n"
+"<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M15.736,16.508c0-0.75,0-0.75-0.735-0.75h-0.03c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75  h0.03C15.736,17.258,15.736,17.258,15.736,16.508L15.736,16.508z\"\n"
+"   id=\"path15485\" />\n"
+"<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M21.736,16.508c0-0.75,0-0.75-0.735-0.75h-0.03c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75  h0.03C21.736,17.258,21.736,17.258,21.736,16.508L21.736,16.508z\"\n"
+"   id=\"path15487\" />\n"
+"<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M8.231,13.492c0-0.75,0-0.75-0.735-0.75h-0.03c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75  h0.03C8.231,14.242,8.231,14.242,8.231,13.492L8.231,13.492z\"\n"
+"   id=\"path15489\" />\n"
+"<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M11.21,13.492c0-0.75,0-0.75-0.734-0.75h-0.031c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75  h0.031C11.21,14.242,11.21,14.242,11.21,13.492L11.21,13.492z\"\n"
+"   id=\"path15491\" />\n"
+"<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M14.252,13.844l-0.83-0.969l-0.156-0.133c-0.514,0-0.514,0-0.514,0.75l0,0c0,0.75,0,0.75,0.735,0.75h0.03  c0.735,0,0.436-0.75,0.436-0.75L14.252,13.844z\"\n"
+"   id=\"path15493\" />\n"
+"<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M20.252,13.492c0-0.75,0-0.75-0.734-0.75h-0.031c-0.733,0-0.733,0-0.733,0.75l0,0c0,0.75,0,0.75,0.733,0.75  h0.031C20.252,14.242,20.252,14.242,20.252,13.492L20.252,13.492z\"\n"
+"   id=\"path15495\" />\n"
+"<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M23.248,13.492c0-0.75,0-0.75-0.734-0.75h-0.031c-0.733,0-0.733,0-0.733,0.75l0,0c0,0.75,0,0.75,0.733,0.75  h0.031C23.248,14.242,23.248,14.242,23.248,13.492L23.248,13.492z\"\n"
+"   id=\"path15497\" />\n"
+"<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M6.744,10.508c0-0.75,0-0.75-0.734-0.75h-0.03c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75  h0.03C6.744,11.258,6.744,11.258,6.744,10.508L6.744,10.508z\"\n"
+"   id=\"path15499\" />\n"
+"<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M9.723,10.508c0-0.75,0-0.75-0.734-0.75H8.957c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75  h0.031C9.723,11.258,9.723,11.258,9.723,10.508L9.723,10.508z\"\n"
+"   id=\"path15501\" />\n"
+"<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M15.764,10.508c0-0.75,0-0.75-0.734-0.75H15c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75h0.03  C15.764,11.258,15.764,11.258,15.764,10.508L15.764,10.508z\"\n"
+"   id=\"path15503\" />\n"
+"<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M18.764,10.508c0-0.75,0-0.75-0.734-0.75H18c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75  h0.029C18.764,11.258,18.764,11.258,18.764,10.508L18.764,10.508z\"\n"
+"   id=\"path15505\" />\n"
+"<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M21.76,10.508c0-0.75,0-0.75-0.734-0.75h-0.029c-0.734,0-0.734,0-0.734,0.75l0,0c0,0.75,0,0.75,0.734,0.75  h0.029C21.76,11.258,21.76,11.258,21.76,10.508L21.76,10.508z\"\n"
+"   id=\"path15507\" />\n"
+"<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M24.791,10.508c0-0.75,0-0.75-0.734-0.75h-0.029c-0.735,0-0.735,0-0.735,0.75l0,0c0,0.75,0,0.75,0.735,0.75  h0.029C24.791,11.258,24.791,11.258,24.791,10.508L24.791,10.508z\"\n"
+"   id=\"path15509\" />\n"
+"<polygon\n"
+"   fill=\"#262626\"\n"
+"   points=\"274.167,176.833 275.5,176.833 275.5,176.833 \"\n"
+"   id=\"polygon15511\" />\n"
+"<rect\n"
+"   x=\"-0.52\"\n"
+"   y=\"14.492\"\n"
+"   transform=\"matrix(0.7071 0.7071 -0.7071 0.7071 14.9968 -6.2032)\"\n"
+"   fill=\"#FF5555\"\n"
+"   width=\"31.012\"\n"
+"   height=\"1.016\"\n"
+"   id=\"rect15513\" />\n"
+"<g\n"
+"   id=\"g15519\">\n"
+"\t<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M12.751,10.614c0-0.036,0-0.065,0-0.106c0-0.75,0-0.75-0.733-0.75h-0.03c-0.035,0-0.061,0-0.092,0   L12.751,10.614z\"\n"
+"   id=\"path15515\" />\n"
+"\t<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M11.254,10.555c0.001,0.688,0.02,0.703,0.704,0.703L11.254,10.555z\"\n"
+"   id=\"path15517\" />\n"
 "</g>\n"
-"<path fill=\"#FF5555\" d=\"M16.378,14.241c0.037,0,0.067,0,0.108,0h0.031c0.734,0,0.734,0,0.734-0.75s0-0.75-0.734-0.75h-0.031\n"
-"\tc-0.733,0-0.733,0-0.733,0.75c0,0.047,0.001,0.083,0.001,0.125L16.378,14.241z\"/>\n"
-"<g>\n"
-"\t<path fill=\"#FF5555\" d=\"M22.393,20.24h0.09c1,0,1,0,1-0.75s0-0.75-1-0.75h-1.59L22.393,20.24z\"/>\n"
-"\t<path fill=\"#FF5555\" d=\"M19.456,18.74H7.545c-1,0-1,0-1,0.75s0,0.75,1,0.75h13.411L19.456,18.74z\"/>\n"
+"<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M16.378,14.241c0.037,0,0.067,0,0.108,0h0.031c0.734,0,0.734,0,0.734-0.75s0-0.75-0.734-0.75h-0.031  c-0.733,0-0.733,0-0.733,0.75c0,0.047,0.001,0.083,0.001,0.125L16.378,14.241z\"\n"
+"   id=\"path15521\" />\n"
+"<g\n"
+"   id=\"g15527\">\n"
+"\t<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M22.393,20.24h0.09c1,0,1,0,1-0.75s0-0.75-1-0.75h-1.59L22.393,20.24z\"\n"
+"   id=\"path15523\" />\n"
+"\t<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M19.456,18.74H7.545c-1,0-1,0-1,0.75s0,0.75,1,0.75h13.411L19.456,18.74z\"\n"
+"   id=\"path15525\" />\n"
 "</g>\n"
-"<g>\n"
-"\t<path fill=\"#FF5555\" d=\"M23.166,22.465H3.424c-0.259,0-0.523-0.266-0.523-0.523V8.039c0-0.256,0.209-0.465,0.466-0.465h4.907\n"
-"\t\tL7.305,6.605h-3.96c-0.688,0-1.374,0.576-1.374,1.419v13.917c0,0.773,0.679,1.453,1.454,1.453h20.67L23.166,22.465z\"/>\n"
-"\t<path fill=\"#FF5555\" d=\"M26.641,6.605H8.742L9.71,7.574h16.924c0.256,0,0.465,0.208,0.465,0.465v13.902\n"
-"\t\tc0,0.252-0.156,0.523-0.406,0.523h-2.092l0.93,0.93h1.16c0.738,0,1.338-0.652,1.338-1.453V8.024\n"
-"\t\tC28.029,7.181,27.422,6.605,26.641,6.605z\"/>\n"
+"<g\n"
+"   id=\"g15533\">\n"
+"\t<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M23.166,22.465H3.424c-0.259,0-0.523-0.266-0.523-0.523V8.039c0-0.256,0.209-0.465,0.466-0.465h4.907   L7.305,6.605h-3.96c-0.688,0-1.374,0.576-1.374,1.419v13.917c0,0.773,0.679,1.453,1.454,1.453h20.67L23.166,22.465z\"\n"
+"   id=\"path15529\" />\n"
+"\t<path\n"
+"   fill=\"#FF5555\"\n"
+"   d=\"M26.641,6.605H8.742L9.71,7.574h16.924c0.256,0,0.465,0.208,0.465,0.465v13.902   c0,0.252-0.156,0.523-0.406,0.523h-2.092l0.93,0.93h1.16c0.738,0,1.338-0.652,1.338-1.453V8.024   C28.029,7.181,27.422,6.605,26.641,6.605z\"\n"
+"   id=\"path15531\" />\n"
 "</g>\n"
 "</svg>\n";
 
 const char* keyboard_disabled_svg = (const char*) temp_binary_data_36;
 
-//================== lgc_bar.wav ==================
+//================== keypad-num-disabled.svg ==================
 static const unsigned char temp_binary_data_37[] =
+"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
+"<svg\n"
+"   width=\"512\"\n"
+"   height=\"512\"\n"
+"   viewBox=\"0 0 512 512\"\n"
+"   version=\"1.1\"\n"
+"   id=\"svg15961\"\n"
+"   sodipodi:docname=\"keypad-num-disabled.svg\"\n"
+"   inkscape:version=\"1.2 (dc2aeda, 2022-05-15)\"\n"
+"   xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\"\n"
+"   xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\"\n"
+"   xmlns=\"http://www.w3.org/2000/svg\"\n"
+"   xmlns:svg=\"http://www.w3.org/2000/svg\"\n"
+"   xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"\n"
+"   xmlns:cc=\"http://creativecommons.org/ns#\"\n"
+"   xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n"
+"  <defs\n"
+"     id=\"defs15965\">\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"16\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       id=\"rect16534\" />\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"16\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       id=\"rect16534-6\" />\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"16\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       id=\"rect16534-6-0\" />\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"16\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       id=\"rect16534-6-3\" />\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"16\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       id=\"rect16534-6-5\" />\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"16\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       id=\"rect16534-6-6\" />\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"16\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       id=\"rect16534-6-00\" />\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"16\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       id=\"rect16534-6-4\" />\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"16\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       id=\"rect16534-6-9\" />\n"
+"  </defs>\n"
+"  <sodipodi:namedview\n"
+"     id=\"namedview15963\"\n"
+"     pagecolor=\"#505050\"\n"
+"     bordercolor=\"#ffffff\"\n"
+"     borderopacity=\"1\"\n"
+"     inkscape:showpageshadow=\"0\"\n"
+"     inkscape:pageopacity=\"0\"\n"
+"     inkscape:pagecheckerboard=\"1\"\n"
+"     inkscape:deskcolor=\"#505050\"\n"
+"     showgrid=\"false\"\n"
+"     inkscape:zoom=\"0.99448325\"\n"
+"     inkscape:cx=\"310.71413\"\n"
+"     inkscape:cy=\"254.40348\"\n"
+"     inkscape:window-width=\"1371\"\n"
+"     inkscape:window-height=\"802\"\n"
+"     inkscape:window-x=\"2472\"\n"
+"     inkscape:window-y=\"695\"\n"
+"     inkscape:window-maximized=\"0\"\n"
+"     inkscape:current-layer=\"svg15961\" />\n"
+"  <title\n"
+"     id=\"title15939\">ionicons-v5-g</title>\n"
+"  <metadata\n"
+"     id=\"metadata16100\">\n"
+"    <rdf:RDF>\n"
+"      <cc:Work\n"
+"         rdf:about=\"\">\n"
+"        <dc:title>ionicons-v5-g</dc:title>\n"
+"      </cc:Work>\n"
+"    </rdf:RDF>\n"
+"  </metadata>\n"
+"  <rect\n"
+"     style=\"fill:none;stroke:none;stroke-width:0;stroke-dasharray:none\"\n"
+"     id=\"rect22547\"\n"
+"     width=\"512\"\n"
+"     height=\"512\"\n"
+"     x=\"0\"\n"
+"     y=\"0\" />\n"
+"  <rect\n"
+"     x=\"80\"\n"
+"     y=\"80\"\n"
+"     width=\"96\"\n"
+"     height=\"96\"\n"
+"     rx=\"8\"\n"
+"     ry=\"8\"\n"
+"     id=\"rect15941\"\n"
+"     style=\"fill:#ff5555;fill-opacity:1\" />\n"
+"  <rect\n"
+"     x=\"208\"\n"
+"     y=\"80\"\n"
+"     width=\"96\"\n"
+"     height=\"96\"\n"
+"     rx=\"8\"\n"
+"     ry=\"8\"\n"
+"     id=\"rect15943\"\n"
+"     style=\"fill:#ff5555;fill-opacity:1\" />\n"
+"  <rect\n"
+"     x=\"336\"\n"
+"     y=\"80\"\n"
+"     width=\"96\"\n"
+"     height=\"96\"\n"
+"     rx=\"8\"\n"
+"     ry=\"8\"\n"
+"     id=\"rect15945\"\n"
+"     style=\"fill:#ff5555;fill-opacity:1\" />\n"
+"  <rect\n"
+"     x=\"80\"\n"
+"     y=\"208\"\n"
+"     width=\"96\"\n"
+"     height=\"96\"\n"
+"     rx=\"8\"\n"
+"     ry=\"8\"\n"
+"     id=\"rect15947\"\n"
+"     style=\"fill:#ff5555;fill-opacity:1\" />\n"
+"  <rect\n"
+"     x=\"208\"\n"
+"     y=\"208\"\n"
+"     width=\"96\"\n"
+"     height=\"96\"\n"
+"     rx=\"8\"\n"
+"     ry=\"8\"\n"
+"     id=\"rect15949\"\n"
+"     style=\"fill:#ff5555;fill-opacity:1\" />\n"
+"  <rect\n"
+"     x=\"336\"\n"
+"     y=\"208\"\n"
+"     width=\"96\"\n"
+"     height=\"96\"\n"
+"     rx=\"8\"\n"
+"     ry=\"8\"\n"
+"     id=\"rect15951\"\n"
+"     style=\"fill:#ff5555;fill-opacity:1\" />\n"
+"  <rect\n"
+"     x=\"80\"\n"
+"     y=\"336\"\n"
+"     width=\"96\"\n"
+"     height=\"96\"\n"
+"     rx=\"8\"\n"
+"     ry=\"8\"\n"
+"     id=\"rect15953\"\n"
+"     style=\"fill:#ff5555;fill-opacity:1\" />\n"
+"  <rect\n"
+"     x=\"208\"\n"
+"     y=\"336\"\n"
+"     width=\"96\"\n"
+"     height=\"96\"\n"
+"     rx=\"8\"\n"
+"     ry=\"8\"\n"
+"     id=\"rect15955\"\n"
+"     style=\"fill:#ff5555;fill-opacity:1\" />\n"
+"  <rect\n"
+"     x=\"336\"\n"
+"     y=\"336\"\n"
+"     width=\"96\"\n"
+"     height=\"96\"\n"
+"     rx=\"8\"\n"
+"     ry=\"8\"\n"
+"     id=\"rect15959\"\n"
+"     style=\"fill:#ff5555;fill-opacity:1\" />\n"
+"  <text\n"
+"     xml:space=\"preserve\"\n"
+"     id=\"text16532\"\n"
+"     style=\"white-space:pre;shape-inside:url(#rect16534);display:inline;opacity:0.384615;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1.4\"\n"
+"     transform=\"translate(21.854175,322.84883)\"><tspan\n"
+"       x=\"80\"\n"
+"       y=\"91.609488\"\n"
+"       id=\"tspan26912\"><tspan\n"
+"         style=\"font-weight:bold;font-size:85.3333px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Bold'\"\n"
+"         id=\"tspan26910\">1</tspan></tspan></text>\n"
+"  <text\n"
+"     xml:space=\"preserve\"\n"
+"     id=\"text16532-1\"\n"
+"     style=\"white-space:pre;shape-inside:url(#rect16534-6);display:inline;opacity:0.384615;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1.4\"\n"
+"     transform=\"translate(151.37501,323.28633)\"><tspan\n"
+"       x=\"80\"\n"
+"       y=\"91.609488\"\n"
+"       id=\"tspan26916\"><tspan\n"
+"         style=\"font-weight:bold;font-size:85.3333px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Bold'\"\n"
+"         id=\"tspan26914\">2</tspan></tspan></text>\n"
+"  <text\n"
+"     xml:space=\"preserve\"\n"
+"     id=\"text16532-1-9\"\n"
+"     style=\"font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:85.3333px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-num"
+"eric:normal;font-variant-east-asian:normal;white-space:pre;shape-inside:url(#rect16534-6-0);display:inline;opacity:0.384615;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1.4\"\n"
+"     transform=\"translate(279.66668,322.86967)\"><tspan\n"
+"       x=\"80\"\n"
+"       y=\"91.609488\"\n"
+"       id=\"tspan26918\">3</tspan></text>\n"
+"  <text\n"
+"     xml:space=\"preserve\"\n"
+"     id=\"text16532-1-4\"\n"
+"     style=\"white-space:pre;shape-inside:url(#rect16534-6-3);display:inline;opacity:0.384615;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1.4\"\n"
+"     transform=\"translate(23.583344,194.84883)\"><tspan\n"
+"       x=\"80\"\n"
+"       y=\"91.609488\"\n"
+"       id=\"tspan26922\"><tspan\n"
+"         style=\"font-weight:bold;font-size:85.3333px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Bold'\"\n"
+"         id=\"tspan26920\">4</tspan></tspan></text>\n"
+"  <text\n"
+"     xml:space=\"preserve\"\n"
+"     id=\"text16532-1-7\"\n"
+"     style=\"white-space:pre;shape-inside:url(#rect16534-6-5);display:inline;opacity:0.384615;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1.4\"\n"
+"     transform=\"translate(151.47918,194.43217)\"><tspan\n"
+"       x=\"80\"\n"
+"       y=\"91.609488\"\n"
+"       id=\"tspan26926\"><tspan\n"
+"         style=\"font-weight:bold;font-size:85.3333px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Bold'\"\n"
+"         id=\"tspan26924\">5</tspan></tspan></text>\n"
+"  <text\n"
+"     xml:space=\"preserve\"\n"
+"     id=\"text16532-1-47\"\n"
+"     style=\"white-space:pre;shape-inside:url(#rect16534-6-6);display:inline;opacity:0.384615;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1.4\"\n"
+"     transform=\"translate(279.50001,194.78633)\"><tspan\n"
+"       x=\"80\"\n"
+"       y=\"91.609488\"\n"
+"       id=\"tspan26930\"><tspan\n"
+"         style=\"font-weight:bold;font-size:85.3333px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Bold'\"\n"
+"         id=\"tspan26928\">6</tspan></tspan></text>\n"
+"  <text\n"
+"     xml:space=\"preserve\"\n"
+"     id=\"text16532-1-6\"\n"
+"     style=\"white-space:pre;shape-inside:url(#rect16534-6-00);display:inline;opacity:0.384615;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1.4\"\n"
+"     transform=\"translate(23.854177,66.807166)\"><tspan\n"
+"       x=\"80\"\n"
+"       y=\"91.609488\"\n"
+"       id=\"tspan26934\"><tspan\n"
+"         style=\"font-weight:bold;font-size:85.3333px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Bold'\"\n"
+"         id=\"tspan26932\">7</tspan></tspan></text>\n"
+"  <text\n"
+"     xml:space=\"preserve\"\n"
+"     id=\"text16532-1-1\"\n"
+"     style=\"white-space:pre;shape-inside:url(#rect16534-6-4);display:inline;opacity:0.384615;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1.4\"\n"
+"     transform=\"translate(151.62501,66.828)\"><tspan\n"
+"       x=\"80\"\n"
+"       y=\"91.609488\"\n"
+"       id=\"tspan26938\"><tspan\n"
+"         style=\"font-weight:bold;font-size:85.3333px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Bold'\"\n"
+"         id=\"tspan26936\">8</tspan></tspan></text>\n"
+"  <text\n"
+"     xml:space=\"preserve\"\n"
+"     id=\"text16532-1-99\"\n"
+"     style=\"white-space:pre;shape-inside:url(#rect16534-6-9);display:inline;opacity:0.384615;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1.4\"\n"
+"     transform=\"translate(279.75001,66.786333)\"><tspan\n"
+"       x=\"80\"\n"
+"       y=\"91.609488\"\n"
+"       id=\"tspan26942\"><tspan\n"
+"         style=\"font-weight:bold;font-size:85.3333px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Bold'\"\n"
+"         id=\"tspan26940\">9</tspan></tspan></text>\n"
+"  <path\n"
+"     style=\"fill:#ff5555;fill-opacity:1;stroke:#ff0101;stroke-width:20;stroke-dasharray:none;stroke-opacity:1\"\n"
+"     d=\"M 45.198341,41.653373 471.48073,467.93577\"\n"
+"     id=\"path19857\" />\n"
+"</svg>\n";
+
+const char* keypadnumdisabled_svg = (const char*) temp_binary_data_37;
+
+//================== keypad-num.svg ==================
+static const unsigned char temp_binary_data_38[] =
+"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
+"<svg\n"
+"   width=\"512\"\n"
+"   height=\"512\"\n"
+"   viewBox=\"0 0 512 512\"\n"
+"   version=\"1.1\"\n"
+"   id=\"svg15961\"\n"
+"   sodipodi:docname=\"keypad-num.svg\"\n"
+"   inkscape:version=\"1.2 (dc2aeda, 2022-05-15)\"\n"
+"   xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\"\n"
+"   xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\"\n"
+"   xmlns=\"http://www.w3.org/2000/svg\"\n"
+"   xmlns:svg=\"http://www.w3.org/2000/svg\"\n"
+"   xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"\n"
+"   xmlns:cc=\"http://creativecommons.org/ns#\"\n"
+"   xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n"
+"  <defs\n"
+"     id=\"defs15965\">\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"16\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       id=\"rect16534\" />\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"16\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       id=\"rect16534-6\" />\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"16\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       id=\"rect16534-6-0\" />\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"16\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       id=\"rect16534-6-3\" />\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"16\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       id=\"rect16534-6-5\" />\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"16\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       id=\"rect16534-6-6\" />\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"16\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       id=\"rect16534-6-00\" />\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"16\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       id=\"rect16534-6-4\" />\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"16\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       id=\"rect16534-6-9\" />\n"
+"  </defs>\n"
+"  <sodipodi:namedview\n"
+"     id=\"namedview15963\"\n"
+"     pagecolor=\"#505050\"\n"
+"     bordercolor=\"#ffffff\"\n"
+"     borderopacity=\"1\"\n"
+"     inkscape:showpageshadow=\"0\"\n"
+"     inkscape:pageopacity=\"0\"\n"
+"     inkscape:pagecheckerboard=\"1\"\n"
+"     inkscape:deskcolor=\"#505050\"\n"
+"     showgrid=\"false\"\n"
+"     inkscape:zoom=\"0.77249743\"\n"
+"     inkscape:cx=\"392.23432\"\n"
+"     inkscape:cy=\"292.55761\"\n"
+"     inkscape:window-width=\"1371\"\n"
+"     inkscape:window-height=\"802\"\n"
+"     inkscape:window-x=\"2765\"\n"
+"     inkscape:window-y=\"406\"\n"
+"     inkscape:window-maximized=\"0\"\n"
+"     inkscape:current-layer=\"svg15961\" />\n"
+"  <title\n"
+"     id=\"title15939\">ionicons-v5-g</title>\n"
+"  <metadata\n"
+"     id=\"metadata16100\">\n"
+"    <rdf:RDF>\n"
+"      <cc:Work\n"
+"         rdf:about=\"\">\n"
+"        <dc:title>ionicons-v5-g</dc:title>\n"
+"      </cc:Work>\n"
+"    </rdf:RDF>\n"
+"  </metadata>\n"
+"  <rect\n"
+"     style=\"fill:none;stroke:none;stroke-width:0;stroke-dasharray:none\"\n"
+"     id=\"rect22547\"\n"
+"     width=\"512\"\n"
+"     height=\"512\"\n"
+"     x=\"0\"\n"
+"     y=\"0\" />\n"
+"  <g\n"
+"     id=\"g21324\">\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"76\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       rx=\"8\"\n"
+"       ry=\"8\"\n"
+"       id=\"rect15941\"\n"
+"       style=\"fill:#e5e5e5;fill-opacity:1\" />\n"
+"    <rect\n"
+"       x=\"208\"\n"
+"       y=\"76\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       rx=\"8\"\n"
+"       ry=\"8\"\n"
+"       id=\"rect15943\"\n"
+"       style=\"fill:#e5e5e5;fill-opacity:1\" />\n"
+"    <rect\n"
+"       x=\"336\"\n"
+"       y=\"76\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       rx=\"8\"\n"
+"       ry=\"8\"\n"
+"       id=\"rect15945\"\n"
+"       style=\"fill:#e5e5e5;fill-opacity:1\" />\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"204\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       rx=\"8\"\n"
+"       ry=\"8\"\n"
+"       id=\"rect15947\"\n"
+"       style=\"fill:#e5e5e5;fill-opacity:1\" />\n"
+"    <rect\n"
+"       x=\"208\"\n"
+"       y=\"204\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       rx=\"8\"\n"
+"       ry=\"8\"\n"
+"       id=\"rect15949\"\n"
+"       style=\"fill:#e5e5e5;fill-opacity:1\" />\n"
+"    <rect\n"
+"       x=\"336\"\n"
+"       y=\"204\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       rx=\"8\"\n"
+"       ry=\"8\"\n"
+"       id=\"rect15951\"\n"
+"       style=\"fill:#e5e5e5;fill-opacity:1\" />\n"
+"    <rect\n"
+"       x=\"80\"\n"
+"       y=\"332\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       rx=\"8\"\n"
+"       ry=\"8\"\n"
+"       id=\"rect15953\"\n"
+"       style=\"fill:#e5e5e5;fill-opacity:1\" />\n"
+"    <rect\n"
+"       x=\"208\"\n"
+"       y=\"332\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       rx=\"8\"\n"
+"       ry=\"8\"\n"
+"       id=\"rect15955\"\n"
+"       style=\"fill:#e5e5e5;fill-opacity:1\" />\n"
+"    <rect\n"
+"       x=\"336\"\n"
+"       y=\"332\"\n"
+"       width=\"96\"\n"
+"       height=\"96\"\n"
+"       rx=\"8\"\n"
+"       ry=\"8\"\n"
+"       id=\"rect15959\"\n"
+"       style=\"fill:#e5e5e5;fill-opacity:1\" />\n"
+"    <text\n"
+"       xml:space=\"preserve\"\n"
+"       id=\"text16532\"\n"
+"       style=\"white-space:pre;shape-inside:url(#rect16534);display:inline;opacity:0.583587;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1.4\"\n"
+"       transform=\"translate(21.854175,318.84883)\"><tspan\n"
+"         x=\"80\"\n"
+"         y=\"91.609488\"\n"
+"         id=\"tspan26079\"><tspan\n"
+"           style=\"font-weight:bold;font-size:85.3333px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Bold'\"\n"
+"           id=\"tspan26077\">1</tspan></tspan></text>\n"
+"    <text\n"
+"       xml:space=\"preserve\"\n"
+"       id=\"text16532-1\"\n"
+"       style=\"white-space:pre;shape-inside:url(#rect16534-6);display:inline;opacity:0.583587;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1.4\"\n"
+"       transform=\"translate(151.37501,319.28633)\"><tspan\n"
+"         x=\"80\"\n"
+"         y=\"91.609488\"\n"
+"         id=\"tspan26083\"><tspan\n"
+"           style=\"font-weight:bold;font-size:85.3333px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Bold'\"\n"
+"           id=\"tspan26081\">2</tspan></tspan></text>\n"
+"    <text\n"
+"       xml:space=\"preserve\"\n"
+"       id=\"text16532-1-9\"\n"
+"       style=\"font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:85.3333px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-n"
+"umeric:normal;font-variant-east-asian:normal;white-space:pre;shape-inside:url(#rect16534-6-0);display:inline;opacity:0.583587;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1.4\"\n"
+"       transform=\"translate(279.66668,318.86967)\"><tspan\n"
+"         x=\"80\"\n"
+"         y=\"91.609488\"\n"
+"         id=\"tspan26085\">3</tspan></text>\n"
+"    <text\n"
+"       xml:space=\"preserve\"\n"
+"       id=\"text16532-1-4\"\n"
+"       style=\"white-space:pre;shape-inside:url(#rect16534-6-3);display:inline;opacity:0.583587;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1.4\"\n"
+"       transform=\"translate(23.583344,190.84883)\"><tspan\n"
+"         x=\"80\"\n"
+"         y=\"91.609488\"\n"
+"         id=\"tspan26089\"><tspan\n"
+"           style=\"font-weight:bold;font-size:85.3333px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Bold'\"\n"
+"           id=\"tspan26087\">4</tspan></tspan></text>\n"
+"    <text\n"
+"       xml:space=\"preserve\"\n"
+"       id=\"text16532-1-7\"\n"
+"       style=\"white-space:pre;shape-inside:url(#rect16534-6-5);display:inline;opacity:0.583587;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1.4\"\n"
+"       transform=\"translate(151.47918,190.43217)\"><tspan\n"
+"         x=\"80\"\n"
+"         y=\"91.609488\"\n"
+"         id=\"tspan26093\"><tspan\n"
+"           style=\"font-weight:bold;font-size:85.3333px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Bold'\"\n"
+"           id=\"tspan26091\">5</tspan></tspan></text>\n"
+"    <text\n"
+"       xml:space=\"preserve\"\n"
+"       id=\"text16532-1-47\"\n"
+"       style=\"white-space:pre;shape-inside:url(#rect16534-6-6);display:inline;opacity:0.583587;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1.4\"\n"
+"       transform=\"translate(279.50001,190.78633)\"><tspan\n"
+"         x=\"80\"\n"
+"         y=\"91.609488\"\n"
+"         id=\"tspan26097\"><tspan\n"
+"           style=\"font-weight:bold;font-size:85.3333px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Bold'\"\n"
+"           id=\"tspan26095\">6</tspan></tspan></text>\n"
+"    <text\n"
+"       xml:space=\"preserve\"\n"
+"       id=\"text16532-1-6\"\n"
+"       style=\"white-space:pre;shape-inside:url(#rect16534-6-00);display:inline;opacity:0.583587;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1.4\"\n"
+"       transform=\"translate(23.854177,62.807166)\"><tspan\n"
+"         x=\"80\"\n"
+"         y=\"91.609488\"\n"
+"         id=\"tspan26101\"><tspan\n"
+"           style=\"font-weight:bold;font-size:85.3333px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Bold'\"\n"
+"           id=\"tspan26099\">7</tspan></tspan></text>\n"
+"    <text\n"
+"       xml:space=\"preserve\"\n"
+"       id=\"text16532-1-1\"\n"
+"       style=\"white-space:pre;shape-inside:url(#rect16534-6-4);display:inline;opacity:0.583587;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1.4\"\n"
+"       transform=\"translate(151.62501,62.828)\"><tspan\n"
+"         x=\"80\"\n"
+"         y=\"91.609488\"\n"
+"         id=\"tspan26105\"><tspan\n"
+"           style=\"font-weight:bold;font-size:85.3333px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Bold'\"\n"
+"           id=\"tspan26103\">8</tspan></tspan></text>\n"
+"    <text\n"
+"       xml:space=\"preserve\"\n"
+"       id=\"text16532-1-99\"\n"
+"       style=\"white-space:pre;shape-inside:url(#rect16534-6-9);display:inline;opacity:0.583587;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:1.4\"\n"
+"       transform=\"translate(279.75001,62.786333)\"><tspan\n"
+"         x=\"80\"\n"
+"         y=\"91.609488\"\n"
+"         id=\"tspan26109\"><tspan\n"
+"           style=\"font-weight:bold;font-size:85.3333px;font-family:'Open Sans';-inkscape-font-specification:'Open Sans, Bold'\"\n"
+"           id=\"tspan26107\">9</tspan></tspan></text>\n"
+"  </g>\n"
+"</svg>\n";
+
+const char* keypadnum_svg = (const char*) temp_binary_data_38;
+
+//================== lgc_bar.wav ==================
+static const unsigned char temp_binary_data_39[] =
 { 82,73,70,70,30,3,0,0,87,65,86,69,102,109,116,32,16,0,0,0,1,0,1,0,68,172,0,0,136,88,1,0,2,0,16,0,100,97,116,97,250,2,0,0,0,0,0,0,149,33,255,62,19,87,14,105,118,116,67,121,174,119,75,112,225,99,117,83,28,64,12,43,106,21,86,0,213,236,182,219,179,205,51,
 195,133,188,172,185,135,186,198,190,232,197,110,207,152,218,214,230,93,243,154,255,245,10,225,20,21,29,43,35,29,39,198,40,87,40,225,37,203,33,69,28,209,21,184,14,114,7,90,0,191,249,250,243,52,239,164,235,88,233,89,232,152,232,253,233,90,236,139,239,70,
 243,102,247,156,251,187,255,145,3,236,6,181,9,198,11,37,13,178,13,156,13,196,12,112,11,148,9,107,7,8,5,151,2,49,0,249,253,2,252,101,250,47,249,101,248,11,248,31,248,143,248,95,249,105,250,175,251,13,253,122,254,222,255,39,1,79,2,57,3,245,3,103,4,155,
@@ -17314,10 +18072,10 @@ static const unsigned char temp_binary_data_37[] =
 4,0,252,255,4,0,252,255,3,0,253,255,1,0,0,0,255,255,0,0,0,0,255,255,2,0,253,255,2,0,255,255,2,0,253,255,3,0,254,255,2,0,255,255,1,0,254,255,3,0,254,255,1,0,0,0,255,255,2,0,253,255,4,0,252,255,2,0,255,255,0,0,1,0,255,255,0,0,255,255,1,0,0,0,0,0,0,0,255,
 255,1,0,0,0,0,0,1,0,255,255,0,0,1,0,254,255,3,0,254,255,1,0,0,0,254,255,3,0,254,255,0,0,2,0,252,255,5,0,252,255,2,0,255,255,0,0,1,0,254,255,3,0,253,255,2,0,255,255,0,0,0,0,2,0,252,255,5,0,251,255,3,0,0,0,255,255,0,0,1,0,254,255,0,0 };
 
-const char* lgc_bar_wav = (const char*) temp_binary_data_37;
+const char* lgc_bar_wav = (const char*) temp_binary_data_39;
 
 //================== link.svg ==================
-static const unsigned char temp_binary_data_38[] =
+static const unsigned char temp_binary_data_40[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -17395,10 +18153,10 @@ static const unsigned char temp_binary_data_38[] =
 "         rdf:about=\"\"><dc:format>image/svg+xml</dc:format><dc:type\n"
 "           rdf:resource=\"http://purl.org/dc/dcmitype/StillImage\" /><dc:title></dc:title></cc:Work></rdf:RDF></metadata></svg>\n";
 
-const char* link_svg = (const char*) temp_binary_data_38;
+const char* link_svg = (const char*) temp_binary_data_40;
 
 //================== link_all.svg ==================
-static const unsigned char temp_binary_data_39[] =
+static const unsigned char temp_binary_data_41[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -17560,10 +18318,10 @@ static const unsigned char temp_binary_data_39[] =
 "     style=\"fill:#9d9d9d;fill-opacity:1;stroke:#cccccc;stroke-width:20;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1\"\n"
 "     sodipodi:type=\"star\" /></svg>\n";
 
-const char* link_all_svg = (const char*) temp_binary_data_39;
+const char* link_all_svg = (const char*) temp_binary_data_41;
 
 //================== link_up.svg ==================
-static const unsigned char temp_binary_data_40[] =
+static const unsigned char temp_binary_data_42[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -17715,10 +18473,10 @@ static const unsigned char temp_binary_data_40[] =
 "     style=\"fill:#cccccc;fill-opacity:1;stroke:#cccccc;stroke-width:15;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1\"\n"
 "     sodipodi:nodetypes=\"cccsssccscssscsc\" /></svg>\n";
 
-const char* link_up_svg = (const char*) temp_binary_data_40;
+const char* link_up_svg = (const char*) temp_binary_data_42;
 
 //================== loop_icon.svg ==================
-static const unsigned char temp_binary_data_41[] =
+static const unsigned char temp_binary_data_43[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -17857,10 +18615,10 @@ static const unsigned char temp_binary_data_41[] =
 "  </g>\n"
 "</svg>\n";
 
-const char* loop_icon_svg = (const char*) temp_binary_data_41;
+const char* loop_icon_svg = (const char*) temp_binary_data_43;
 
 //================== loop_off_icon.png ==================
-static const unsigned char temp_binary_data_42[] =
+static const unsigned char temp_binary_data_44[] =
 { 137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,128,0,0,0,128,8,6,0,0,0,195,62,97,203,0,0,0,9,112,72,89,115,0,0,62,253,0,0,62,253,1,52,210,149,6,0,0,0,25,116,69,88,116,83,111,102,116,119,97,114,101,0,119,119,119,46,105,110,107,115,99,97,112,101,46,
 111,114,103,155,238,60,26,0,0,11,136,73,68,65,84,120,156,237,157,127,140,28,101,25,199,191,207,236,238,245,206,235,181,17,108,37,4,140,86,73,192,2,43,59,51,116,115,20,149,22,107,177,1,140,84,35,6,66,2,189,148,42,197,90,5,140,24,254,144,64,66,81,146,202,
 111,10,106,52,6,133,16,141,138,64,249,113,72,234,185,237,252,208,149,158,13,54,138,160,17,5,197,244,174,117,185,221,189,121,252,227,118,113,123,157,153,157,221,157,31,239,236,189,159,63,231,125,230,125,159,217,231,187,239,251,206,251,107,0,137,68,34,
@@ -17905,10 +18663,10 @@ static const unsigned char temp_binary_data_42[] =
 166,9,88,136,52,59,134,204,252,27,31,51,207,163,253,131,32,5,32,56,197,98,113,106,118,118,118,189,143,8,158,236,37,127,41,128,20,208,20,1,128,199,91,175,19,209,19,75,151,46,189,189,151,188,101,31,32,101,88,150,117,174,227,56,31,204,100,50,7,10,133,194,
 11,73,251,35,145,72,36,18,137,68,34,145,72,36,18,137,68,34,145,72,36,18,137,68,34,145,72,36,18,137,68,60,254,7,45,158,66,83,98,132,144,188,0,0,0,0,73,69,78,68,174,66,96,130,0,0 };
 
-const char* loop_off_icon_png = (const char*) temp_binary_data_42;
+const char* loop_off_icon_png = (const char*) temp_binary_data_44;
 
 //================== loop_off_icon.svg ==================
-static const unsigned char temp_binary_data_43[] =
+static const unsigned char temp_binary_data_45[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   id=\"svg1437\"\n"
@@ -17982,10 +18740,10 @@ static const unsigned char temp_binary_data_43[] =
 "714844 l 1.9511716,-1.951172 a 0.74999949,0.74999949 0 0 0 0,-1.060547 0.74999949,0.74999949 0 0 0 -0.53125,-0.220703 z\" />\n"
 "</svg>\n";
 
-const char* loop_off_icon_svg = (const char*) temp_binary_data_43;
+const char* loop_off_icon_svg = (const char*) temp_binary_data_45;
 
 //================== mesg-unread.svg ==================
-static const unsigned char temp_binary_data_44[] =
+static const unsigned char temp_binary_data_46[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   width=\"512\"\n"
@@ -18050,10 +18808,10 @@ static const unsigned char temp_binary_data_44[] =
 "  </metadata>\n"
 "</svg>\n";
 
-const char* mesgunread_svg = (const char*) temp_binary_data_44;
+const char* mesgunread_svg = (const char*) temp_binary_data_46;
 
 //================== met.svg ==================
-static const unsigned char temp_binary_data_45[] =
+static const unsigned char temp_binary_data_47[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -18147,10 +18905,10 @@ static const unsigned char temp_binary_data_45[] =
 "     d=\"M 272.02882,378.01479 391.67282,150.47536 407.40159,121.313\"\n"
 "     style=\"fill:none;stroke:#cccccc;stroke-width:22;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-mid:url(#TriangleInS)\" /></svg>\n";
 
-const char* met_svg = (const char*) temp_binary_data_45;
+const char* met_svg = (const char*) temp_binary_data_47;
 
 //================== mic.svg ==================
-static const unsigned char temp_binary_data_46[] =
+static const unsigned char temp_binary_data_48[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -18225,10 +18983,10 @@ static const unsigned char temp_binary_data_46[] =
 "     fill-rule=\"nonzero\"\n"
 "     id=\"path7563\" /></svg>\n";
 
-const char* mic_svg = (const char*) temp_binary_data_46;
+const char* mic_svg = (const char*) temp_binary_data_48;
 
 //================== mic_disabled.svg ==================
-static const unsigned char temp_binary_data_47[] =
+static const unsigned char temp_binary_data_49[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -18304,10 +19062,10 @@ static const unsigned char temp_binary_data_47[] =
 "     fill-rule=\"nonzero\"\n"
 "     id=\"path7573\" /></svg>\n";
 
-const char* mic_disabled_svg = (const char*) temp_binary_data_47;
+const char* mic_disabled_svg = (const char*) temp_binary_data_49;
 
 //================== mic_pointing.svg ==================
-static const unsigned char temp_binary_data_48[] =
+static const unsigned char temp_binary_data_50[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -18436,10 +19194,10 @@ static const unsigned char temp_binary_data_48[] =
 "       d=\"m 154.00949,66.298434 c -4.18442,-4.18442 -4.18442,-10.966085 0,-15.140885 4.18443,-4.18443 10.95647,-4.18443 15.1409,0 L 456.30795,338.31512 c 4.18444,4.18442 4.18444,10.95646 0,15.1409 -4.1748,4.18442 -10.95647,4.18442 -15.14089,0\"\n"
 "       style=\"display:inline;fill:#ff5555;fill-opacity:1;fill-rule:nonzero;stroke-width:8.06606885;stroke:#ff5555;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none\" /></g></svg>\n";
 
-const char* mic_pointing_svg = (const char*) temp_binary_data_48;
+const char* mic_pointing_svg = (const char*) temp_binary_data_50;
 
 //================== move_updown.svg ==================
-static const unsigned char temp_binary_data_49[] =
+static const unsigned char temp_binary_data_51[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -18577,10 +19335,10 @@ static const unsigned char temp_binary_data_49[] =
 "  </g>\n"
 "</svg>\n";
 
-const char* move_updown_svg = (const char*) temp_binary_data_49;
+const char* move_updown_svg = (const char*) temp_binary_data_51;
 
 //================== mute-others.svg ==================
-static const unsigned char temp_binary_data_50[] =
+static const unsigned char temp_binary_data_52[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -18684,10 +19442,10 @@ static const unsigned char temp_binary_data_50[] =
 "         inkscape:connector-curvature=\"0\"\n"
 "         sodipodi:nodetypes=\"ccsccc\" /></g></g></svg>\n";
 
-const char* muteothers_svg = (const char*) temp_binary_data_50;
+const char* muteothers_svg = (const char*) temp_binary_data_52;
 
 //================== network.svg ==================
-static const unsigned char temp_binary_data_51[] =
+static const unsigned char temp_binary_data_53[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -18776,10 +19534,10 @@ static const unsigned char temp_binary_data_51[] =
 "         rdf:about=\"\"><dc:format>image/svg+xml</dc:format><dc:type\n"
 "           rdf:resource=\"http://purl.org/dc/dcmitype/StillImage\" /><dc:title></dc:title></cc:Work></rdf:RDF></metadata></svg>\n";
 
-const char* network_svg = (const char*) temp_binary_data_51;
+const char* network_svg = (const char*) temp_binary_data_53;
 
 //================== oneshot.svg ==================
-static const unsigned char temp_binary_data_52[] =
+static const unsigned char temp_binary_data_54[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   version=\"1.1\"\n"
@@ -18866,10 +19624,10 @@ static const unsigned char temp_binary_data_52[] =
 "     d=\"m 115.92156,104.66624 24.27833,-26.182945 -0.49335,80.141885\"\n"
 "     sodipodi:nodetypes=\"ccc\" /></svg>\n";
 
-const char* oneshot_svg = (const char*) temp_binary_data_52;
+const char* oneshot_svg = (const char*) temp_binary_data_54;
 
 //================== outgoing_allowed.svg ==================
-static const unsigned char temp_binary_data_53[] =
+static const unsigned char temp_binary_data_55[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -18972,10 +19730,10 @@ static const unsigned char temp_binary_data_53[] =
 "6.33,5.09225 10.3888,12.90972 10.3888,21.66515 0,1.1546 -0.077,2.29083 -0.2107,3.40762 24.6388,4.90044 50.1525,6.55372 76.891,4.94529 1.7613,-16.56588 2.3097,-32.32834 1.6781,-47.31225 z\"\n"
 "     style=\"fill:#e6e6e6;fill-opacity:1;stroke-width:0.540292\" /></svg>\n";
 
-const char* outgoing_allowed_svg = (const char*) temp_binary_data_53;
+const char* outgoing_allowed_svg = (const char*) temp_binary_data_55;
 
 //================== outgoing_allowed_active.svg ==================
-static const unsigned char temp_binary_data_54[] =
+static const unsigned char temp_binary_data_56[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -19052,10 +19810,10 @@ static const unsigned char temp_binary_data_54[] =
 "       id=\"path7039\"\n"
 "       d=\"m 367,192 v 79.7 c 0,60.2 -49.8,109.2 -110,109.2 -60.2,0 -110,-49 -110,-109.2 V 192 h -19 v 79.7 c 0,67.2 53,122.6 120,127.5 V 462 h -73 v 18 h 161 v -18 h -69 v -62.8 c 66,-4.9 117,-60.3 117,-127.5 V 192 Z\" /></g></svg>\n";
 
-const char* outgoing_allowed_active_svg = (const char*) temp_binary_data_54;
+const char* outgoing_allowed_active_svg = (const char*) temp_binary_data_56;
 
 //================== outgoing_disallowed.svg ==================
-static const unsigned char temp_binary_data_55[] =
+static const unsigned char temp_binary_data_57[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -19154,10 +19912,10 @@ static const unsigned char temp_binary_data_55[] =
 "062 -19.86549,54.19122 6.33,5.09225 10.38879,12.90972 10.38879,21.66515 0,1.1546 -0.077,2.29083 -0.2107,3.40762 24.6388,4.90044 50.1525,6.55372 76.891,4.94529 1.7613,-16.56588 2.3097,-32.32834 1.6781,-47.31225 z\"\n"
 "     style=\"fill:#e6e6e6;fill-opacity:1;stroke-width:0.540292\" /></svg>\n";
 
-const char* outgoing_disallowed_svg = (const char*) temp_binary_data_55;
+const char* outgoing_disallowed_svg = (const char*) temp_binary_data_57;
 
 //================== paste_icon.svg ==================
-static const unsigned char temp_binary_data_56[] =
+static const unsigned char temp_binary_data_58[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -19232,10 +19990,10 @@ static const unsigned char temp_binary_data_56[] =
 "     x=\"176\" />\n"
 "</svg>\n";
 
-const char* paste_icon_svg = (const char*) temp_binary_data_56;
+const char* paste_icon_svg = (const char*) temp_binary_data_58;
 
 //================== pause_icon.svg ==================
-static const unsigned char temp_binary_data_57[] =
+static const unsigned char temp_binary_data_59[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -19366,10 +20124,10 @@ static const unsigned char temp_binary_data_57[] =
 "  </g>\n"
 "</svg>\n";
 
-const char* pause_icon_svg = (const char*) temp_binary_data_57;
+const char* pause_icon_svg = (const char*) temp_binary_data_59;
 
 //================== people.png ==================
-static const unsigned char temp_binary_data_58[] =
+static const unsigned char temp_binary_data_60[] =
 { 137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,48,0,0,0,48,8,6,0,0,0,87,2,249,135,0,0,0,9,112,72,89,115,0,0,1,98,0,0,1,98,1,95,39,208,83,0,0,0,25,116,69,88,116,83,111,102,116,119,97,114,101,0,119,119,119,46,105,110,107,115,99,97,112,101,46,111,114,
 103,155,238,60,26,0,0,6,106,73,68,65,84,104,129,237,152,109,140,92,101,21,128,159,243,222,187,187,109,55,181,161,235,206,206,220,217,45,149,18,208,93,81,139,31,80,164,104,170,96,20,149,63,146,136,74,76,109,76,44,160,72,2,13,38,126,70,82,136,52,45,34,
 63,42,152,104,248,168,10,126,166,137,223,245,163,5,137,18,9,138,27,91,74,217,214,221,123,222,105,183,221,33,105,75,157,238,220,123,252,49,119,54,227,118,102,118,27,183,250,103,158,63,51,247,220,243,158,143,251,222,247,188,231,190,208,161,67,135,14,29,
@@ -19396,10 +20154,10 @@ static const unsigned char temp_binary_data_58[] =
 155,45,202,179,37,251,190,184,75,85,83,239,253,119,255,91,123,109,201,42,143,197,113,188,105,161,109,171,234,231,84,213,84,245,202,133,182,61,67,28,199,59,85,245,128,153,45,216,113,76,157,108,33,191,232,189,255,233,217,140,59,171,131,45,85,61,74,173,
 249,58,151,148,163,40,90,62,95,229,182,167,18,141,152,153,120,239,31,18,145,115,114,28,57,203,151,91,200,211,187,14,29,58,116,232,208,161,195,185,226,223,191,160,18,11,195,92,207,96,0,0,0,0,73,69,78,68,174,66,96,130,0,0 };
 
-const char* people_png = (const char*) temp_binary_data_58;
+const char* people_png = (const char*) temp_binary_data_60;
 
 //================== people.svg ==================
-static const unsigned char temp_binary_data_59[] =
+static const unsigned char temp_binary_data_61[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -19481,10 +20239,10 @@ static const unsigned char temp_binary_data_59[] =
 "         rdf:about=\"\"><dc:format>image/svg+xml</dc:format><dc:type\n"
 "           rdf:resource=\"http://purl.org/dc/dcmitype/StillImage\" /><dc:title></dc:title></cc:Work></rdf:RDF></metadata></svg>\n";
 
-const char* people_svg = (const char*) temp_binary_data_59;
+const char* people_svg = (const char*) temp_binary_data_61;
 
 //================== person.png ==================
-static const unsigned char temp_binary_data_60[] =
+static const unsigned char temp_binary_data_62[] =
 { 137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,48,0,0,0,48,8,6,0,0,0,87,2,249,135,0,0,0,9,112,72,89,115,0,0,1,98,0,0,1,98,1,95,39,208,83,0,0,0,25,116,69,88,116,83,111,102,116,119,97,114,101,0,119,119,119,46,105,110,107,115,99,97,112,101,46,111,114,
 103,155,238,60,26,0,0,3,82,73,68,65,84,104,129,237,152,77,104,92,101,20,134,159,51,51,25,77,34,34,193,76,38,55,18,41,152,133,63,75,211,212,186,40,232,34,32,136,224,34,96,23,181,186,146,174,138,32,88,92,74,192,157,27,197,46,68,218,133,46,138,224,207,202,
 223,66,55,213,166,117,89,151,70,195,220,115,111,162,17,196,140,237,152,153,121,93,56,133,18,19,103,198,156,22,132,251,172,46,247,188,223,247,158,119,238,207,220,239,131,130,130,130,130,130,130,255,49,22,61,97,154,166,135,205,236,69,51,59,34,41,1,48,51,
@@ -19500,10 +20258,10 @@ static const unsigned char temp_binary_data_60[] =
 146,78,37,73,114,218,204,218,255,165,233,189,144,52,146,101,217,9,96,25,88,55,179,67,131,252,48,3,5,112,247,179,192,49,224,67,73,87,246,215,106,159,134,204,14,2,207,74,58,51,51,51,243,66,95,253,32,147,186,251,38,48,177,223,230,134,228,151,36,73,38,111,
 179,103,65,65,65,65,65,193,237,229,47,213,25,86,225,205,242,241,224,0,0,0,0,73,69,78,68,174,66,96,130,0,0 };
 
-const char* person_png = (const char*) temp_binary_data_60;
+const char* person_png = (const char*) temp_binary_data_62;
 
 //================== person.svg ==================
-static const unsigned char temp_binary_data_61[] =
+static const unsigned char temp_binary_data_63[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -19573,10 +20331,10 @@ static const unsigned char temp_binary_data_61[] =
 "         rdf:about=\"\"><dc:format>image/svg+xml</dc:format><dc:type\n"
 "           rdf:resource=\"http://purl.org/dc/dcmitype/StillImage\" /><dc:title></dc:title></cc:Work></rdf:RDF></metadata></svg>\n";
 
-const char* person_svg = (const char*) temp_binary_data_61;
+const char* person_svg = (const char*) temp_binary_data_63;
 
 //================== play_back_to_back.svg ==================
-static const unsigned char temp_binary_data_62[] =
+static const unsigned char temp_binary_data_64[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   inkscape:export-ydpi=\"102.4\"\n"
@@ -19716,10 +20474,10 @@ static const unsigned char temp_binary_data_62[] =
 "     sodipodi:nodetypes=\"cc\" />\n"
 "</svg>\n";
 
-const char* play_back_to_back_svg = (const char*) temp_binary_data_62;
+const char* play_back_to_back_svg = (const char*) temp_binary_data_64;
 
 //================== play_background.svg ==================
-static const unsigned char temp_binary_data_63[] =
+static const unsigned char temp_binary_data_65[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   inkscape:export-ydpi=\"102.4\"\n"
@@ -19878,10 +20636,10 @@ static const unsigned char temp_binary_data_63[] =
 "  </g>\n"
 "</svg>\n";
 
-const char* play_background_svg = (const char*) temp_binary_data_63;
+const char* play_background_svg = (const char*) temp_binary_data_65;
 
 //================== play_icon.svg ==================
-static const unsigned char temp_binary_data_64[] =
+static const unsigned char temp_binary_data_66[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -20003,10 +20761,10 @@ static const unsigned char temp_binary_data_64[] =
 "     id=\"path4930\" />\n"
 "</svg>\n";
 
-const char* play_icon_svg = (const char*) temp_binary_data_64;
+const char* play_icon_svg = (const char*) temp_binary_data_66;
 
 //================== play_simultaneous.svg ==================
-static const unsigned char temp_binary_data_65[] =
+static const unsigned char temp_binary_data_67[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   inkscape:export-ydpi=\"102.4\"\n"
@@ -20145,10 +20903,10 @@ static const unsigned char temp_binary_data_65[] =
 "     sodipodi:nodetypes=\"cc\" />\n"
 "</svg>\n";
 
-const char* play_simultaneous_svg = (const char*) temp_binary_data_65;
+const char* play_simultaneous_svg = (const char*) temp_binary_data_67;
 
 //================== plus_icon.svg ==================
-static const unsigned char temp_binary_data_66[] =
+static const unsigned char temp_binary_data_68[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   version=\"1.0\"\n"
@@ -20279,10 +21037,10 @@ static const unsigned char temp_binary_data_66[] =
 "  </g>\n"
 "</svg>\n";
 
-const char* plus_icon_svg = (const char*) temp_binary_data_66;
+const char* plus_icon_svg = (const char*) temp_binary_data_68;
 
 //================== power.svg ==================
-static const unsigned char temp_binary_data_67[] =
+static const unsigned char temp_binary_data_69[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -20357,10 +21115,10 @@ static const unsigned char temp_binary_data_67[] =
 "       id=\"path4471\"\n"
 "       style=\"stroke:none;stroke-opacity:1;fill:#b2b2b2;fill-opacity:1\" /></g></svg>\n";
 
-const char* power_svg = (const char*) temp_binary_data_67;
+const char* power_svg = (const char*) temp_binary_data_69;
 
 //================== power_sel.svg ==================
-static const unsigned char temp_binary_data_68[] =
+static const unsigned char temp_binary_data_70[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -20435,10 +21193,10 @@ static const unsigned char temp_binary_data_68[] =
 "       id=\"path4471\"\n"
 "       d=\"m 354.9038,193.4519 a 22,22 0 0 1 -22,-22 V -8.5480978 a 22,22 0 0 1 44,0 V 171.4519 a 22,22 0 0 1 -22,22 z\" /></g></svg>\n";
 
-const char* power_sel_svg = (const char*) temp_binary_data_68;
+const char* power_sel_svg = (const char*) temp_binary_data_70;
 
 //================== record.svg ==================
-static const unsigned char temp_binary_data_69[] =
+static const unsigned char temp_binary_data_71[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -20562,10 +21320,10 @@ static const unsigned char temp_binary_data_69[] =
 "     r=\"10.826572\" />\n"
 "</svg>\n";
 
-const char* record_svg = (const char*) temp_binary_data_69;
+const char* record_svg = (const char*) temp_binary_data_71;
 
 //================== record_active.svg ==================
-static const unsigned char temp_binary_data_70[] =
+static const unsigned char temp_binary_data_72[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -20689,10 +21447,10 @@ static const unsigned char temp_binary_data_70[] =
 "     r=\"10.826573\" />\n"
 "</svg>\n";
 
-const char* record_active_svg = (const char*) temp_binary_data_70;
+const char* record_active_svg = (const char*) temp_binary_data_72;
 
 //================== record_active_alt.svg ==================
-static const unsigned char temp_binary_data_71[] =
+static const unsigned char temp_binary_data_73[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -20816,10 +21574,10 @@ static const unsigned char temp_binary_data_71[] =
 "     style=\"fill:#f74848;fill-opacity:1;stroke:#cccccc;stroke-width:1.03096;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1\" />\n"
 "</svg>\n";
 
-const char* record_active_alt_svg = (const char*) temp_binary_data_71;
+const char* record_active_alt_svg = (const char*) temp_binary_data_73;
 
 //================== rectape.svg ==================
-static const unsigned char temp_binary_data_72[] =
+static const unsigned char temp_binary_data_74[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -20906,10 +21664,10 @@ static const unsigned char temp_binary_data_72[] =
 "  </g>\n"
 "</svg>\n";
 
-const char* rectape_svg = (const char*) temp_binary_data_72;
+const char* rectape_svg = (const char*) temp_binary_data_74;
 
 //================== replay_icon.svg ==================
-static const unsigned char temp_binary_data_73[] =
+static const unsigned char temp_binary_data_75[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   inkscape:export-ydpi=\"102.4\"\n"
@@ -21039,10 +21797,10 @@ static const unsigned char temp_binary_data_73[] =
 "  </g>\n"
 "</svg>\n";
 
-const char* replay_icon_svg = (const char*) temp_binary_data_73;
+const char* replay_icon_svg = (const char*) temp_binary_data_75;
 
 //================== reset_buffer_icon.svg ==================
-static const unsigned char temp_binary_data_74[] =
+static const unsigned char temp_binary_data_76[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -21114,10 +21872,10 @@ static const unsigned char temp_binary_data_74[] =
 "     d=\"M 96.73077,88.727418 93.56857,411.27258\"\n"
 "     style=\"fill:#e6e6e6;fill-opacity:1;stroke:#e6e6e6;stroke-width:24;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1\" /></svg>\n";
 
-const char* reset_buffer_icon_svg = (const char*) temp_binary_data_74;
+const char* reset_buffer_icon_svg = (const char*) temp_binary_data_76;
 
 //================== send.svg ==================
-static const unsigned char temp_binary_data_75[] =
+static const unsigned char temp_binary_data_77[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   width=\"512\"\n"
@@ -21150,10 +21908,10 @@ static const unsigned char temp_binary_data_75[] =
 "  </metadata>\n"
 "</svg>\n";
 
-const char* send_svg = (const char*) temp_binary_data_75;
+const char* send_svg = (const char*) temp_binary_data_77;
 
 //================== send_group.svg ==================
-static const unsigned char temp_binary_data_76[] =
+static const unsigned char temp_binary_data_78[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -21248,10 +22006,10 @@ static const unsigned char temp_binary_data_76[] =
 "         rdf:about=\"\"><dc:format>image/svg+xml</dc:format><dc:type\n"
 "           rdf:resource=\"http://purl.org/dc/dcmitype/StillImage\" /><dc:title></dc:title></cc:Work></rdf:RDF></metadata></svg>\n";
 
-const char* send_group_svg = (const char*) temp_binary_data_76;
+const char* send_group_svg = (const char*) temp_binary_data_78;
 
 //================== send_group_small.svg ==================
-static const unsigned char temp_binary_data_77[] =
+static const unsigned char temp_binary_data_79[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -21346,10 +22104,10 @@ static const unsigned char temp_binary_data_77[] =
 "         rdf:about=\"\"><dc:format>image/svg+xml</dc:format><dc:type\n"
 "           rdf:resource=\"http://purl.org/dc/dcmitype/StillImage\" /><dc:title></dc:title></cc:Work></rdf:RDF></metadata></svg>\n";
 
-const char* send_group_small_svg = (const char*) temp_binary_data_77;
+const char* send_group_small_svg = (const char*) temp_binary_data_79;
 
 //================== settings_icon.svg ==================
-static const unsigned char temp_binary_data_78[] =
+static const unsigned char temp_binary_data_80[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -21417,10 +22175,10 @@ static const unsigned char temp_binary_data_78[] =
 "         rdf:about=\"\"><dc:format>image/svg+xml</dc:format><dc:type\n"
 "           rdf:resource=\"http://purl.org/dc/dcmitype/StillImage\" /><dc:title></dc:title></cc:Work></rdf:RDF></metadata></svg>";
 
-const char* settings_icon_svg = (const char*) temp_binary_data_78;
+const char* settings_icon_svg = (const char*) temp_binary_data_80;
 
 //================== skipback_icon.svg ==================
-static const unsigned char temp_binary_data_79[] =
+static const unsigned char temp_binary_data_81[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -21493,10 +22251,10 @@ static const unsigned char temp_binary_data_79[] =
 "     x1=\"112\" />\n"
 "</svg>\n";
 
-const char* skipback_icon_svg = (const char*) temp_binary_data_79;
+const char* skipback_icon_svg = (const char*) temp_binary_data_81;
 
 //================== sonobus_logo_96.png ==================
-static const unsigned char temp_binary_data_80[] =
+static const unsigned char temp_binary_data_82[] =
 { 137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,96,0,0,0,96,8,6,0,0,0,226,152,119,56,0,0,0,9,112,72,89,115,0,0,5,137,0,0,5,137,1,109,104,157,250,0,0,0,25,116,69,88,116,83,111,102,116,119,97,114,101,0,119,119,119,46,105,110,107,115,99,97,112,101,46,
 111,114,103,155,238,60,26,0,0,19,120,73,68,65,84,120,156,237,157,121,124,28,197,149,199,191,213,61,35,141,102,116,75,22,178,45,11,219,128,108,99,203,54,62,98,59,118,240,193,97,3,159,128,179,16,7,18,47,11,187,192,230,19,178,9,36,155,108,178,217,108,112,
 14,18,242,225,78,54,108,178,201,2,27,236,112,132,195,24,135,144,64,240,250,36,1,108,131,111,19,31,178,37,91,178,14,235,154,123,186,107,255,40,205,120,70,26,205,244,28,58,252,89,253,230,83,154,86,117,119,85,247,123,85,239,189,122,245,170,6,70,48,130,17,
@@ -21570,10 +22328,10 @@ static const unsigned char temp_binary_data_80[] =
 215,244,70,151,105,2,219,80,214,205,179,64,235,224,189,78,102,24,234,8,229,98,212,50,216,101,168,213,152,147,176,182,128,163,19,229,185,220,133,10,17,217,196,32,76,158,12,4,134,154,1,241,80,138,10,89,44,64,109,118,228,66,141,51,220,168,13,191,27,56,143,
 90,248,8,70,48,130,17,140,96,4,35,24,193,8,70,48,12,241,127,224,50,254,113,39,185,17,225,0,0,0,0,73,69,78,68,174,66,96,130,0,0 };
 
-const char* sonobus_logo_96_png = (const char*) temp_binary_data_80;
+const char* sonobus_logo_96_png = (const char*) temp_binary_data_82;
 
 //================== sonobus_title_small.png ==================
-static const unsigned char temp_binary_data_81[] =
+static const unsigned char temp_binary_data_83[] =
 { 137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,1,157,0,0,0,96,8,6,0,0,0,198,164,175,209,0,0,0,9,112,72,89,115,0,0,1,118,0,0,1,118,1,233,206,71,139,0,0,0,25,116,69,88,116,83,111,102,116,119,97,114,101,0,119,119,119,46,105,110,107,115,99,97,112,101,
 46,111,114,103,155,238,60,26,0,0,32,0,73,68,65,84,120,156,237,157,119,96,19,229,255,199,223,151,61,155,166,77,210,116,179,10,66,25,181,101,200,158,178,17,197,34,163,8,226,15,183,248,69,17,5,17,5,190,184,253,226,0,199,215,9,50,100,40,10,42,10,2,50,101,
 151,34,20,40,133,238,54,163,105,218,140,38,77,147,187,251,253,113,45,22,104,51,218,148,22,191,247,42,71,175,119,207,61,207,115,151,220,125,238,249,60,159,1,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,
@@ -21806,10 +22564,10 @@ static const unsigned char temp_binary_data_81[] =
 171,217,70,130,177,58,51,130,49,12,200,70,112,179,135,178,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,
 176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,220,82,254,31,201,193,32,51,22,181,193,39,0,0,0,0,73,69,78,68,174,66,96,130,0,0 };
 
-const char* sonobus_title_small_png = (const char*) temp_binary_data_81;
+const char* sonobus_title_small_png = (const char*) temp_binary_data_83;
 
 //================== soundboard.svg ==================
-static const unsigned char temp_binary_data_82[] =
+static const unsigned char temp_binary_data_84[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   inkscape:version=\"1.1 (c68e22c387, 2021-05-23)\"\n"
@@ -21957,10 +22715,10 @@ static const unsigned char temp_binary_data_82[] =
 "       id=\"rect6668-1-5-2\"\n"
 "       style=\"fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:21.1031;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1\" /></g></svg>\n";
 
-const char* soundboard_svg = (const char*) temp_binary_data_82;
+const char* soundboard_svg = (const char*) temp_binary_data_84;
 
 //================== speaker.svg ==================
-static const unsigned char temp_binary_data_83[] =
+static const unsigned char temp_binary_data_85[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -22037,10 +22795,10 @@ static const unsigned char temp_binary_data_83[] =
 " 2523,887 2380,823 2221,823 Z\"\n"
 "       style=\"fill:#e6e6e6;fill-opacity:1;stroke:none;stroke-opacity:1\" /></g></svg>\n";
 
-const char* speaker_svg = (const char*) temp_binary_data_83;
+const char* speaker_svg = (const char*) temp_binary_data_85;
 
 //================== speaker_disabled.svg ==================
-static const unsigned char temp_binary_data_84[] =
+static const unsigned char temp_binary_data_86[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -22111,10 +22869,10 @@ static const unsigned char temp_binary_data_84[] =
 "     fill-rule=\"nonzero\"\n"
 "     id=\"path7431\" /></svg>\n";
 
-const char* speaker_disabled_svg = (const char*) temp_binary_data_84;
+const char* speaker_disabled_svg = (const char*) temp_binary_data_86;
 
 //================== speaker_disabled_grey.svg ==================
-static const unsigned char temp_binary_data_85[] =
+static const unsigned char temp_binary_data_87[] =
 "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n"
 "<svg version=\"1.1\"\n"
@@ -22140,10 +22898,10 @@ static const unsigned char temp_binary_data_85[] =
 "\tc4.478-5.552,12.537-6.269,17.91-1.792l46.739,37.966v-107.99L338.973,274.789z\"/>\n"
 "</svg>\n";
 
-const char* speaker_disabled_grey_svg = (const char*) temp_binary_data_85;
+const char* speaker_disabled_grey_svg = (const char*) temp_binary_data_87;
 
 //================== toggle.svg ==================
-static const unsigned char temp_binary_data_86[] =
+static const unsigned char temp_binary_data_88[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   version=\"1.1\"\n"
@@ -22236,10 +22994,10 @@ static const unsigned char temp_binary_data_86[] =
 "       id=\"path4471\"\n"
 "       style=\"fill:#e6e6e6;fill-opacity:1;stroke:none;stroke-opacity:1\" /></g></svg>\n";
 
-const char* toggle_svg = (const char*) temp_binary_data_86;
+const char* toggle_svg = (const char*) temp_binary_data_88;
 
 //================== triangle_disclosure.svg ==================
-static const unsigned char temp_binary_data_87[] =
+static const unsigned char temp_binary_data_89[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -22318,10 +23076,10 @@ static const unsigned char temp_binary_data_87[] =
 "     style=\"fill:#e6e6e6;fill-opacity:1;stroke:#e6e6e6;stroke-width:23.9998;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1\"\n"
 "     sodipodi:type=\"star\" /></svg>\n";
 
-const char* triangle_disclosure_svg = (const char*) temp_binary_data_87;
+const char* triangle_disclosure_svg = (const char*) temp_binary_data_89;
 
 //================== triangle_disclosure_right.svg ==================
-static const unsigned char temp_binary_data_88[] =
+static const unsigned char temp_binary_data_90[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -22401,10 +23159,10 @@ static const unsigned char temp_binary_data_88[] =
 "     transform=\"matrix(0,-2.0118261,1.1767472,0,7.4764537,517.19607)\"\n"
 "     inkscape:transform-center-x=\"-31.271791\" /></svg>\n";
 
-const char* triangle_disclosure_right_svg = (const char*) temp_binary_data_88;
+const char* triangle_disclosure_right_svg = (const char*) temp_binary_data_90;
 
 //================== urei_main.wav ==================
-static const unsigned char temp_binary_data_89[] =
+static const unsigned char temp_binary_data_91[] =
 { 82,73,70,70,112,2,0,0,87,65,86,69,102,109,116,32,16,0,0,0,1,0,1,0,68,172,0,0,136,88,1,0,2,0,16,0,100,97,116,97,76,2,0,0,24,255,34,1,177,206,124,146,140,144,94,144,113,144,31,145,103,144,174,145,135,144,16,146,213,144,70,146,72,145,96,146,211,145,98,146,
 121,146,79,146,46,147,55,146,227,147,48,146,128,148,73,146,249,148,145,146,72,149,168,146,93,155,215,235,234,18,48,11,3,16,147,12,226,14,78,13,34,14,204,13,163,13,17,14,93,13,35,14,71,13,17,14,78,13,226,13,111,13,171,13,142,13,128,13,160,13,99,13,162,
 13,86,13,152,13,82,13,132,13,89,13,105,13,94,13,85,13,96,13,73,13,90,13,67,13,81,13,59,13,72,13,52,13,58,13,52,13,49,13,44,13,41,13,40,13,32,13,32,13,23,13,22,13,19,13,16,13,12,13,9,13,0,13,255,12,253,12,250,12,246,12,242,12,239,12,235,12,234,12,226,
@@ -22415,10 +23173,10 @@ static const unsigned char temp_binary_data_89[] =
 10,141,10,135,10,123,10,125,10,110,10,105,10,97,10,86,10,81,10,69,10,62,10,53,10,42,10,32,10,25,10,13,10,0,10,248,9,231,9,221,9,211,9,192,9,183,9,164,9,148,9,134,9,113,9,97,9,75,9,52,9,30,9,4,9,233,8,207,8,172,8,133,8,103,8,51,8,13,8,211,7,158,7,94,7,
 27,7,212,6,135,6,64,6,234,5,0,0 };
 
-const char* urei_main_wav = (const char*) temp_binary_data_89;
+const char* urei_main_wav = (const char*) temp_binary_data_91;
 
 //================== wordmaker.g ==================
-static const unsigned char temp_binary_data_90[] =
+static const unsigned char temp_binary_data_92[] =
 { 123,10,60,115,116,97,114,116,62,10,60,118,101,114,98,62,60,97,100,106,101,99,116,105,118,101,62,60,110,111,117,110,62,59,10,60,97,100,106,101,99,116,105,118,101,62,60,97,100,106,101,99,116,105,118,101,62,60,110,111,117,110,62,59,10,60,97,100,106,101,
 99,116,105,118,101,62,60,97,100,106,101,99,116,105,118,101,62,60,110,111,117,110,62,59,10,60,118,101,114,98,62,60,97,100,118,101,114,98,62,59,10,125,10,10,123,10,60,97,100,106,101,99,116,105,118,101,62,10,97,98,97,115,105,99,59,10,97,98,97,116,105,99,
 59,10,97,98,105,101,110,116,59,10,97,98,106,101,99,116,59,10,97,98,108,97,122,101,59,10,97,98,108,101,59,10,97,98,108,111,111,109,59,10,97,98,111,114,97,108,59,10,97,98,111,117,116,59,10,97,98,111,118,101,59,10,97,98,114,111,97,100,59,10,97,98,114,117,
@@ -24215,10 +24973,10 @@ static const unsigned char temp_binary_data_90[] =
 59,10,119,105,100,101,59,10,119,105,100,101,108,121,59,10,119,105,108,100,59,10,119,105,108,100,108,121,59,10,119,105,115,101,108,121,59,10,119,105,116,104,97,108,59,10,119,105,116,104,105,110,59,10,119,111,114,115,101,59,10,119,111,114,115,116,59,10,
 119,114,111,110,103,59,10,119,114,121,108,121,59,10,121,101,97,59,10,121,101,97,104,59,10,121,101,97,114,108,121,59,10,121,101,116,59,10,121,111,110,59,10,121,111,110,100,101,114,59,10,122,105,103,122,97,103,59,10,125,10,0,0 };
 
-const char* wordmaker_g = (const char*) temp_binary_data_90;
+const char* wordmaker_g = (const char*) temp_binary_data_92;
 
 //================== x_icon.svg ==================
-static const unsigned char temp_binary_data_91[] =
+static const unsigned char temp_binary_data_93[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -24349,7 +25107,7 @@ static const unsigned char temp_binary_data_91[] =
 "  </g>\n"
 "</svg>\n";
 
-const char* x_icon_svg = (const char*) temp_binary_data_91;
+const char* x_icon_svg = (const char*) temp_binary_data_93;
 
 
 const char* getNamedResource (const char* resourceNameUTF8, int& numBytes);
@@ -24398,8 +25156,10 @@ const char* getNamedResource (const char* resourceNameUTF8, int& numBytes)
         case 0x7de528b4:  numBytes = 9780; return incoming_allowed_svg;
         case 0xd988d55b:  numBytes = 9888; return incoming_allowed_active_svg;
         case 0x5bfbf738:  numBytes = 9407; return incoming_disallowed_svg;
-        case 0x0c79160c:  numBytes = 5011; return keyboard_svg;
-        case 0x14864f79:  numBytes = 5151; return keyboard_disabled_svg;
+        case 0x0c79160c:  numBytes = 6005; return keyboard_svg;
+        case 0x14864f79:  numBytes = 6288; return keyboard_disabled_svg;
+        case 0xb3633853:  numBytes = 8796; return keypadnumdisabled_svg;
+        case 0x44b8edd7:  numBytes = 8962; return keypadnum_svg;
         case 0xe92ab5c9:  numBytes = 806; return lgc_bar_wav;
         case 0x4733109f:  numBytes = 3128; return link_svg;
         case 0x971e6b81:  numBytes = 6607; return link_all_svg;
@@ -24501,6 +25261,8 @@ const char* namedResourceList[] =
     "incoming_disallowed_svg",
     "keyboard_svg",
     "keyboard_disabled_svg",
+    "keypadnumdisabled_svg",
+    "keypadnum_svg",
     "lgc_bar_wav",
     "link_svg",
     "link_all_svg",
@@ -24597,6 +25359,8 @@ const char* originalFilenames[] =
     "incoming_disallowed.svg",
     "keyboard.svg",
     "keyboard_disabled.svg",
+    "keypad-num-disabled.svg",
+    "keypad-num.svg",
     "lgc_bar.wav",
     "link.svg",
     "link_all.svg",
