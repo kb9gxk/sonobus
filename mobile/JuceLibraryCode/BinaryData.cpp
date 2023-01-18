@@ -22253,8 +22253,91 @@ static const unsigned char temp_binary_data_81[] =
 
 const char* skipback_icon_svg = (const char*) temp_binary_data_81;
 
-//================== sonobus_logo_96.png ==================
+//================== skipforward_icon.svg ==================
 static const unsigned char temp_binary_data_82[] =
+"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
+"<svg\n"
+"   inkscape:version=\"1.2 (dc2aeda, 2022-05-15)\"\n"
+"   sodipodi:docname=\"skipforward_icon.svg\"\n"
+"   id=\"svg22877\"\n"
+"   version=\"1.1\"\n"
+"   viewBox=\"0 0 512 512\"\n"
+"   height=\"512\"\n"
+"   width=\"512\"\n"
+"   xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\"\n"
+"   xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\"\n"
+"   xmlns=\"http://www.w3.org/2000/svg\"\n"
+"   xmlns:svg=\"http://www.w3.org/2000/svg\"\n"
+"   xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"\n"
+"   xmlns:cc=\"http://creativecommons.org/ns#\"\n"
+"   xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n"
+"  <metadata\n"
+"     id=\"metadata22883\">\n"
+"    <rdf:RDF>\n"
+"      <cc:Work\n"
+"         rdf:about=\"\">\n"
+"        <dc:format>image/svg+xml</dc:format>\n"
+"        <dc:type\n"
+"           rdf:resource=\"http://purl.org/dc/dcmitype/StillImage\" />\n"
+"        <dc:title>ionicons-v5-c</dc:title>\n"
+"      </cc:Work>\n"
+"    </rdf:RDF>\n"
+"  </metadata>\n"
+"  <defs\n"
+"     id=\"defs22881\" />\n"
+"  <sodipodi:namedview\n"
+"     inkscape:current-layer=\"svg22877\"\n"
+"     inkscape:window-maximized=\"0\"\n"
+"     inkscape:window-y=\"340\"\n"
+"     inkscape:window-x=\"1983\"\n"
+"     inkscape:cy=\"-28.426726\"\n"
+"     inkscape:cx=\"92.386859\"\n"
+"     inkscape:zoom=\"0.21106898\"\n"
+"     showgrid=\"false\"\n"
+"     id=\"namedview22879\"\n"
+"     inkscape:window-height=\"480\"\n"
+"     inkscape:window-width=\"776\"\n"
+"     inkscape:pageshadow=\"2\"\n"
+"     inkscape:pageopacity=\"0\"\n"
+"     guidetolerance=\"10\"\n"
+"     gridtolerance=\"10\"\n"
+"     objecttolerance=\"10\"\n"
+"     borderopacity=\"1\"\n"
+"     bordercolor=\"#666666\"\n"
+"     pagecolor=\"#ffffff\"\n"
+"     inkscape:showpageshadow=\"0\"\n"
+"     inkscape:pagecheckerboard=\"1\"\n"
+"     inkscape:deskcolor=\"#d1d1d1\" />\n"
+"  <title\n"
+"     id=\"title22871\">ionicons-v5-c</title>\n"
+"  <rect\n"
+"     y=\"0\"\n"
+"     x=\"0\"\n"
+"     height=\"512\"\n"
+"     width=\"512\"\n"
+"     id=\"rect24508\"\n"
+"     style=\"fill:none;stroke:none;stroke-width:22;stroke-linecap:round;stroke-opacity:1\" />\n"
+"  <g\n"
+"     id=\"g1579\"\n"
+"     transform=\"matrix(-1,0,0,1,511.82666,0)\">\n"
+"    <path\n"
+"       id=\"path22873\"\n"
+"       style=\"fill:#000000;fill-opacity:0;stroke:#cccccc;stroke-width:32px;stroke-miterlimit:10;stroke-opacity:1\"\n"
+"       d=\"m 400,111 v 290 c 0,17.44 -17,28.52 -31,20.16 L 121.09,272.79 c -12.12,-7.25 -12.12,-26.33 0,-33.58 L 369,90.84 c 14,-8.36 31,2.72 31,20.16 z\" />\n"
+"    <line\n"
+"       id=\"line22875\"\n"
+"       style=\"fill:none;stroke:#cccccc;stroke-width:32px;stroke-linecap:round;stroke-miterlimit:10;stroke-opacity:1\"\n"
+"       y2=\"432\"\n"
+"       x2=\"112\"\n"
+"       y1=\"80\"\n"
+"       x1=\"112\" />\n"
+"  </g>\n"
+"</svg>\n";
+
+const char* skipforward_icon_svg = (const char*) temp_binary_data_82;
+
+//================== sonobus_logo_96.png ==================
+static const unsigned char temp_binary_data_83[] =
 { 137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,96,0,0,0,96,8,6,0,0,0,226,152,119,56,0,0,0,9,112,72,89,115,0,0,5,137,0,0,5,137,1,109,104,157,250,0,0,0,25,116,69,88,116,83,111,102,116,119,97,114,101,0,119,119,119,46,105,110,107,115,99,97,112,101,46,
 111,114,103,155,238,60,26,0,0,19,120,73,68,65,84,120,156,237,157,121,124,28,197,149,199,191,213,61,35,141,102,116,75,22,178,45,11,219,128,108,99,203,54,62,98,59,118,240,193,97,3,159,128,179,16,7,18,47,11,187,192,230,19,178,9,36,155,108,178,217,108,112,
 14,18,242,225,78,54,108,178,201,2,27,236,112,132,195,24,135,144,64,240,250,36,1,108,131,111,19,31,178,37,91,178,14,235,154,123,186,107,255,40,205,120,70,26,205,244,28,58,252,89,253,230,83,154,86,117,119,85,247,123,85,239,189,122,245,170,6,70,48,130,17,
@@ -22328,10 +22411,10 @@ static const unsigned char temp_binary_data_82[] =
 215,244,70,151,105,2,219,80,214,205,179,64,235,224,189,78,102,24,234,8,229,98,212,50,216,101,168,213,152,147,176,182,128,163,19,229,185,220,133,10,17,217,196,32,76,158,12,4,134,154,1,241,80,138,10,89,44,64,109,118,228,66,141,51,220,168,13,191,27,56,143,
 90,248,8,70,48,130,17,140,96,4,35,24,193,8,70,48,12,241,127,224,50,254,113,39,185,17,225,0,0,0,0,73,69,78,68,174,66,96,130,0,0 };
 
-const char* sonobus_logo_96_png = (const char*) temp_binary_data_82;
+const char* sonobus_logo_96_png = (const char*) temp_binary_data_83;
 
 //================== sonobus_title_small.png ==================
-static const unsigned char temp_binary_data_83[] =
+static const unsigned char temp_binary_data_84[] =
 { 137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,1,157,0,0,0,96,8,6,0,0,0,198,164,175,209,0,0,0,9,112,72,89,115,0,0,1,118,0,0,1,118,1,233,206,71,139,0,0,0,25,116,69,88,116,83,111,102,116,119,97,114,101,0,119,119,119,46,105,110,107,115,99,97,112,101,
 46,111,114,103,155,238,60,26,0,0,32,0,73,68,65,84,120,156,237,157,119,96,19,229,255,199,223,151,61,155,166,77,210,116,179,10,66,25,181,101,200,158,178,17,197,34,163,8,226,15,183,248,69,17,5,17,5,190,184,253,226,0,199,215,9,50,100,40,10,42,10,2,50,101,
 151,34,20,40,133,238,54,163,105,218,140,38,77,147,187,251,253,113,45,22,104,51,218,148,22,191,247,42,71,175,119,207,61,207,115,151,220,125,238,249,60,159,1,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,
@@ -22564,10 +22647,10 @@ static const unsigned char temp_binary_data_83[] =
 171,217,70,130,177,58,51,130,49,12,200,70,112,179,135,178,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,
 176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,176,220,82,254,31,201,193,32,51,22,181,193,39,0,0,0,0,73,69,78,68,174,66,96,130,0,0 };
 
-const char* sonobus_title_small_png = (const char*) temp_binary_data_83;
+const char* sonobus_title_small_png = (const char*) temp_binary_data_84;
 
 //================== soundboard.svg ==================
-static const unsigned char temp_binary_data_84[] =
+static const unsigned char temp_binary_data_85[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   inkscape:version=\"1.1 (c68e22c387, 2021-05-23)\"\n"
@@ -22715,10 +22798,10 @@ static const unsigned char temp_binary_data_84[] =
 "       id=\"rect6668-1-5-2\"\n"
 "       style=\"fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:21.1031;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1\" /></g></svg>\n";
 
-const char* soundboard_svg = (const char*) temp_binary_data_84;
+const char* soundboard_svg = (const char*) temp_binary_data_85;
 
 //================== speaker.svg ==================
-static const unsigned char temp_binary_data_85[] =
+static const unsigned char temp_binary_data_86[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -22795,10 +22878,10 @@ static const unsigned char temp_binary_data_85[] =
 " 2523,887 2380,823 2221,823 Z\"\n"
 "       style=\"fill:#e6e6e6;fill-opacity:1;stroke:none;stroke-opacity:1\" /></g></svg>\n";
 
-const char* speaker_svg = (const char*) temp_binary_data_85;
+const char* speaker_svg = (const char*) temp_binary_data_86;
 
 //================== speaker_disabled.svg ==================
-static const unsigned char temp_binary_data_86[] =
+static const unsigned char temp_binary_data_87[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -22869,10 +22952,10 @@ static const unsigned char temp_binary_data_86[] =
 "     fill-rule=\"nonzero\"\n"
 "     id=\"path7431\" /></svg>\n";
 
-const char* speaker_disabled_svg = (const char*) temp_binary_data_86;
+const char* speaker_disabled_svg = (const char*) temp_binary_data_87;
 
 //================== speaker_disabled_grey.svg ==================
-static const unsigned char temp_binary_data_87[] =
+static const unsigned char temp_binary_data_88[] =
 "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n"
 "<svg version=\"1.1\"\n"
@@ -22898,10 +22981,80 @@ static const unsigned char temp_binary_data_87[] =
 "\tc4.478-5.552,12.537-6.269,17.91-1.792l46.739,37.966v-107.99L338.973,274.789z\"/>\n"
 "</svg>\n";
 
-const char* speaker_disabled_grey_svg = (const char*) temp_binary_data_87;
+const char* speaker_disabled_grey_svg = (const char*) temp_binary_data_88;
+
+//================== stop.svg ==================
+static const unsigned char temp_binary_data_89[] =
+"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
+"<svg\n"
+"   width=\"512\"\n"
+"   height=\"512\"\n"
+"   viewBox=\"0 0 512 512\"\n"
+"   version=\"1.1\"\n"
+"   id=\"svg1644\"\n"
+"   sodipodi:docname=\"stop.svg\"\n"
+"   inkscape:version=\"1.2 (dc2aeda, 2022-05-15)\"\n"
+"   xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\"\n"
+"   xmlns:sodipodi=\"http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd\"\n"
+"   xmlns=\"http://www.w3.org/2000/svg\"\n"
+"   xmlns:svg=\"http://www.w3.org/2000/svg\"\n"
+"   xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"\n"
+"   xmlns:cc=\"http://creativecommons.org/ns#\"\n"
+"   xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n"
+"  <defs\n"
+"     id=\"defs1648\" />\n"
+"  <sodipodi:namedview\n"
+"     id=\"namedview1646\"\n"
+"     pagecolor=\"#505050\"\n"
+"     bordercolor=\"#ffffff\"\n"
+"     borderopacity=\"1\"\n"
+"     inkscape:showpageshadow=\"0\"\n"
+"     inkscape:pageopacity=\"0\"\n"
+"     inkscape:pagecheckerboard=\"1\"\n"
+"     inkscape:deskcolor=\"#505050\"\n"
+"     showgrid=\"false\"\n"
+"     inkscape:zoom=\"0.4609375\"\n"
+"     inkscape:cx=\"256\"\n"
+"     inkscape:cy=\"256\"\n"
+"     inkscape:window-width=\"1309\"\n"
+"     inkscape:window-height=\"456\"\n"
+"     inkscape:window-x=\"2102\"\n"
+"     inkscape:window-y=\"889\"\n"
+"     inkscape:window-maximized=\"0\"\n"
+"     inkscape:current-layer=\"svg1644\" />\n"
+"  <title\n"
+"     id=\"title1640\">ionicons-v5-c</title>\n"
+"  <rect\n"
+"     x=\"96\"\n"
+"     y=\"96\"\n"
+"     width=\"320\"\n"
+"     height=\"320\"\n"
+"     rx=\"24\"\n"
+"     ry=\"24\"\n"
+"     style=\"fill:none;stroke:#cccccf;stroke-linejoin:round;stroke-width:32px;stroke-opacity:1\"\n"
+"     id=\"rect1642\" />\n"
+"  <rect\n"
+"     y=\"0\"\n"
+"     x=\"0\"\n"
+"     height=\"512\"\n"
+"     width=\"512\"\n"
+"     id=\"rect24508\"\n"
+"     style=\"fill:none;stroke:none;stroke-width:22;stroke-linecap:round;stroke-opacity:1\" />\n"
+"  <metadata\n"
+"     id=\"metadata3457\">\n"
+"    <rdf:RDF>\n"
+"      <cc:Work\n"
+"         rdf:about=\"\">\n"
+"        <dc:title>ionicons-v5-c</dc:title>\n"
+"      </cc:Work>\n"
+"    </rdf:RDF>\n"
+"  </metadata>\n"
+"</svg>\n";
+
+const char* stop_svg = (const char*) temp_binary_data_89;
 
 //================== toggle.svg ==================
-static const unsigned char temp_binary_data_88[] =
+static const unsigned char temp_binary_data_90[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   version=\"1.1\"\n"
@@ -22994,10 +23147,10 @@ static const unsigned char temp_binary_data_88[] =
 "       id=\"path4471\"\n"
 "       style=\"fill:#e6e6e6;fill-opacity:1;stroke:none;stroke-opacity:1\" /></g></svg>\n";
 
-const char* toggle_svg = (const char*) temp_binary_data_88;
+const char* toggle_svg = (const char*) temp_binary_data_90;
 
 //================== triangle_disclosure.svg ==================
-static const unsigned char temp_binary_data_89[] =
+static const unsigned char temp_binary_data_91[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -23076,10 +23229,10 @@ static const unsigned char temp_binary_data_89[] =
 "     style=\"fill:#e6e6e6;fill-opacity:1;stroke:#e6e6e6;stroke-width:23.9998;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1\"\n"
 "     sodipodi:type=\"star\" /></svg>\n";
 
-const char* triangle_disclosure_svg = (const char*) temp_binary_data_89;
+const char* triangle_disclosure_svg = (const char*) temp_binary_data_91;
 
 //================== triangle_disclosure_right.svg ==================
-static const unsigned char temp_binary_data_90[] =
+static const unsigned char temp_binary_data_92[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -23159,10 +23312,10 @@ static const unsigned char temp_binary_data_90[] =
 "     transform=\"matrix(0,-2.0118261,1.1767472,0,7.4764537,517.19607)\"\n"
 "     inkscape:transform-center-x=\"-31.271791\" /></svg>\n";
 
-const char* triangle_disclosure_right_svg = (const char*) temp_binary_data_90;
+const char* triangle_disclosure_right_svg = (const char*) temp_binary_data_92;
 
 //================== urei_main.wav ==================
-static const unsigned char temp_binary_data_91[] =
+static const unsigned char temp_binary_data_93[] =
 { 82,73,70,70,112,2,0,0,87,65,86,69,102,109,116,32,16,0,0,0,1,0,1,0,68,172,0,0,136,88,1,0,2,0,16,0,100,97,116,97,76,2,0,0,24,255,34,1,177,206,124,146,140,144,94,144,113,144,31,145,103,144,174,145,135,144,16,146,213,144,70,146,72,145,96,146,211,145,98,146,
 121,146,79,146,46,147,55,146,227,147,48,146,128,148,73,146,249,148,145,146,72,149,168,146,93,155,215,235,234,18,48,11,3,16,147,12,226,14,78,13,34,14,204,13,163,13,17,14,93,13,35,14,71,13,17,14,78,13,226,13,111,13,171,13,142,13,128,13,160,13,99,13,162,
 13,86,13,152,13,82,13,132,13,89,13,105,13,94,13,85,13,96,13,73,13,90,13,67,13,81,13,59,13,72,13,52,13,58,13,52,13,49,13,44,13,41,13,40,13,32,13,32,13,23,13,22,13,19,13,16,13,12,13,9,13,0,13,255,12,253,12,250,12,246,12,242,12,239,12,235,12,234,12,226,
@@ -23173,10 +23326,10 @@ static const unsigned char temp_binary_data_91[] =
 10,141,10,135,10,123,10,125,10,110,10,105,10,97,10,86,10,81,10,69,10,62,10,53,10,42,10,32,10,25,10,13,10,0,10,248,9,231,9,221,9,211,9,192,9,183,9,164,9,148,9,134,9,113,9,97,9,75,9,52,9,30,9,4,9,233,8,207,8,172,8,133,8,103,8,51,8,13,8,211,7,158,7,94,7,
 27,7,212,6,135,6,64,6,234,5,0,0 };
 
-const char* urei_main_wav = (const char*) temp_binary_data_91;
+const char* urei_main_wav = (const char*) temp_binary_data_93;
 
 //================== wordmaker.g ==================
-static const unsigned char temp_binary_data_92[] =
+static const unsigned char temp_binary_data_94[] =
 { 123,10,60,115,116,97,114,116,62,10,60,118,101,114,98,62,60,97,100,106,101,99,116,105,118,101,62,60,110,111,117,110,62,59,10,60,97,100,106,101,99,116,105,118,101,62,60,97,100,106,101,99,116,105,118,101,62,60,110,111,117,110,62,59,10,60,97,100,106,101,
 99,116,105,118,101,62,60,97,100,106,101,99,116,105,118,101,62,60,110,111,117,110,62,59,10,60,118,101,114,98,62,60,97,100,118,101,114,98,62,59,10,125,10,10,123,10,60,97,100,106,101,99,116,105,118,101,62,10,97,98,97,115,105,99,59,10,97,98,97,116,105,99,
 59,10,97,98,105,101,110,116,59,10,97,98,106,101,99,116,59,10,97,98,108,97,122,101,59,10,97,98,108,101,59,10,97,98,108,111,111,109,59,10,97,98,111,114,97,108,59,10,97,98,111,117,116,59,10,97,98,111,118,101,59,10,97,98,114,111,97,100,59,10,97,98,114,117,
@@ -24973,10 +25126,10 @@ static const unsigned char temp_binary_data_92[] =
 59,10,119,105,100,101,59,10,119,105,100,101,108,121,59,10,119,105,108,100,59,10,119,105,108,100,108,121,59,10,119,105,115,101,108,121,59,10,119,105,116,104,97,108,59,10,119,105,116,104,105,110,59,10,119,111,114,115,101,59,10,119,111,114,115,116,59,10,
 119,114,111,110,103,59,10,119,114,121,108,121,59,10,121,101,97,59,10,121,101,97,104,59,10,121,101,97,114,108,121,59,10,121,101,116,59,10,121,111,110,59,10,121,111,110,100,101,114,59,10,122,105,103,122,97,103,59,10,125,10,0,0 };
 
-const char* wordmaker_g = (const char*) temp_binary_data_92;
+const char* wordmaker_g = (const char*) temp_binary_data_94;
 
 //================== x_icon.svg ==================
-static const unsigned char temp_binary_data_93[] =
+static const unsigned char temp_binary_data_95[] =
 "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
 "<svg\n"
 "   xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n"
@@ -25107,7 +25260,7 @@ static const unsigned char temp_binary_data_93[] =
 "  </g>\n"
 "</svg>\n";
 
-const char* x_icon_svg = (const char*) temp_binary_data_93;
+const char* x_icon_svg = (const char*) temp_binary_data_95;
 
 
 const char* getNamedResource (const char* resourceNameUTF8, int& numBytes);
@@ -25203,12 +25356,14 @@ const char* getNamedResource (const char* resourceNameUTF8, int& numBytes)
         case 0xf5b6dab5:  numBytes = 6910; return send_group_small_svg;
         case 0xeb49b23a:  numBytes = 4898; return settings_icon_svg;
         case 0xf15746d7:  numBytes = 2211; return skipback_icon_svg;
+        case 0xb6443957:  numBytes = 2449; return skipforward_icon_svg;
         case 0x2a844d1f:  numBytes = 5099; return sonobus_logo_96_png;
         case 0xb6f3b1ce:  numBytes = 16322; return sonobus_title_small_png;
         case 0x6cdef15c:  numBytes = 6152; return soundboard_svg;
         case 0x6d373624:  numBytes = 3742; return speaker_svg;
         case 0xbe8eca61:  numBytes = 3851; return speaker_disabled_svg;
         case 0xd3eadb27:  numBytes = 2651; return speaker_disabled_grey_svg;
+        case 0x663b24a7:  numBytes = 1802; return stop_svg;
         case 0xcd35def9:  numBytes = 6218; return toggle_svg;
         case 0x598bac29:  numBytes = 3068; return triangle_disclosure_svg;
         case 0xcb4e07c6:  numBytes = 3099; return triangle_disclosure_right_svg;
@@ -25306,12 +25461,14 @@ const char* namedResourceList[] =
     "send_group_small_svg",
     "settings_icon_svg",
     "skipback_icon_svg",
+    "skipforward_icon_svg",
     "sonobus_logo_96_png",
     "sonobus_title_small_png",
     "soundboard_svg",
     "speaker_svg",
     "speaker_disabled_svg",
     "speaker_disabled_grey_svg",
+    "stop_svg",
     "toggle_svg",
     "triangle_disclosure_svg",
     "triangle_disclosure_right_svg",
@@ -25404,12 +25561,14 @@ const char* originalFilenames[] =
     "send_group_small.svg",
     "settings_icon.svg",
     "skipback_icon.svg",
+    "skipforward_icon.svg",
     "sonobus_logo_96.png",
     "sonobus_title_small.png",
     "soundboard.svg",
     "speaker.svg",
     "speaker_disabled.svg",
     "speaker_disabled_grey.svg",
+    "stop.svg",
     "toggle.svg",
     "triangle_disclosure.svg",
     "triangle_disclosure_right.svg",
