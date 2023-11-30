@@ -191142,6 +191142,7 @@ const char* getNamedResource (const char* resourceNameUTF8, int& numBytes)
         case 0x598bac29:  numBytes = 3068; return triangle_disclosure_svg;
         case 0xcb4e07c6:  numBytes = 3099; return triangle_disclosure_right_svg;
         case 0x644135e4:  numBytes = 632; return urei_main_wav;
+        case 0x8d11fef3:  numBytes = 2143; return videocamoutline_svg;
         case 0xee36dce2:  numBytes = 125047; return wordmaker_g;
         case 0x5bdb7d85:  numBytes = 4297; return x_icon_svg;
         default: break;
@@ -191249,6 +191250,7 @@ const char* namedResourceList[] =
     "triangle_disclosure_svg",
     "triangle_disclosure_right_svg",
     "urei_main_wav",
+    "videocamoutline_svg",
     "wordmaker_g",
     "x_icon_svg"
 };
@@ -191351,6 +191353,7 @@ const char* originalFilenames[] =
     "triangle_disclosure.svg",
     "triangle_disclosure_right.svg",
     "urei_main.wav",
+    "videocam-outline.svg",
     "wordmaker.g",
     "x_icon.svg"
 };
