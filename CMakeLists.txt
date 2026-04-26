@@ -85,10 +85,10 @@ elseif (WIN32)
     add_definitions(-DAOO_OPUS_MULTISTREAM_H="../../../../windows/include/opus/opus_multistream.h")
 endif()
 
-add_subdirectory(deps/aoo EXCLUDE_FROM_ALL )
+add_subdirectory(subdeps/aoo EXCLUDE_FROM_ALL )
 
 # need to get these out of the AOO build so we can add them to our our own build defs
-get_directory_property(AOODIR_COMPILE_DEFS DIRECTORY deps/aoo COMPILE_DEFINITIONS)
+get_directory_property(AOODIR_COMPILE_DEFS DIRECTORY subdeps/aoo COMPILE_DEFINITIONS)
 
 #message(STATUS "AOODIR_DEFS: ${AOODIR_COMPILE_DEFS}")
 
@@ -99,10 +99,10 @@ get_directory_property(AOODIR_COMPILE_DEFS DIRECTORY deps/aoo COMPILE_DEFINITION
 option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Show all module sources in IDE projects" ON)
 
 
-add_subdirectory(deps/juce EXCLUDE_FROM_ALL )
+add_subdirectory(subdeps/juce EXCLUDE_FROM_ALL )
 
 
-juce_add_modules(deps/ff_meters)
+juce_add_modules(subdeps/ff_meters)
 
 
 
@@ -210,9 +210,9 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
 
 
     set (HEADER_INCLUDES
-        deps/aoo
-        deps/aoo/include
-        deps/aoo/deps
+        subdeps/aoo_net
+        subdeps/aoo/include
+        subdeps/aoo/deps
     )
 
     set (LIB_PATHS  "")
@@ -365,50 +365,50 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
     
 #[[
     set(AOOSourceFiles        
-        deps/aoo/lib/src/SLIP.hpp
-        deps/aoo/lib/src/client.cpp
-        deps/aoo/lib/src/client.hpp
-        deps/aoo/lib/src/codec_opus.cpp
-        deps/aoo/lib/src/codec_pcm.cpp
-        deps/aoo/lib/src/common.cpp
-        deps/aoo/lib/src/common.hpp
-        deps/aoo/lib/src/lockfree.hpp
-        deps/aoo/lib/src/net_utils.cpp
-        deps/aoo/lib/src/net_utils.hpp
-        deps/aoo/lib/src/server.cpp
-        deps/aoo/lib/src/server.hpp
-        deps/aoo/lib/src/sink.cpp
-        deps/aoo/lib/src/sink.hpp
-        deps/aoo/lib/src/source.cpp
-        deps/aoo/lib/src/source.hpp
-        deps/aoo/lib/src/sync.cpp
-        deps/aoo/lib/src/sync.hpp
-        deps/aoo/lib/src/time.cpp
-        deps/aoo/lib/src/time.hpp
-        deps/aoo/lib/src/time_dll.hpp
-        deps/aoo/lib/aoo/aoo.h
-        deps/aoo/lib/aoo/aoo.hpp
-        deps/aoo/lib/aoo/aoo_net.h
-        deps/aoo/lib/aoo/aoo_net.hpp
-        deps/aoo/lib/aoo/aoo_opus.h
-        deps/aoo/lib/aoo/aoo_pcm.h
-        deps/aoo/lib/aoo/aoo_types.h
-        deps/aoo/lib/aoo/aoo_utils.hpp
+        subdeps/aoo/lib/src/SLIP.hpp
+        subdeps/aoo/lib/src/client.cpp
+        subdeps/aoo/lib/src/client.hpp
+        subdeps/aoo/lib/src/codec_opus.cpp
+        subdeps/aoo/lib/src/codec_pcm.cpp
+        subdeps/aoo/lib/src/common.cpp
+        subdeps/aoo/lib/src/common.hpp
+        subdeps/aoo/lib/src/lockfree.hpp
+        subdeps/aoo/lib/src/net_utils.cpp
+        subdeps/aoo/lib/src/net_utils.hpp
+        subdeps/aoo/lib/src/server.cpp
+        subdeps/aoo/lib/src/server.hpp
+        subdeps/aoo/lib/src/sink.cpp
+        subdeps/aoo/lib/src/sink.hpp
+        subdeps/aoo/lib/src/source.cpp
+        subdeps/aoo/lib/src/source.hpp
+        subdeps/aoo/lib/src/sync.cpp
+        subdeps/aoo/lib/src/sync.hpp
+        subdeps/aoo/lib/src/time.cpp
+        subdeps/aoo/lib/src/time.hpp
+        subdeps/aoo/lib/src/time_dll.hpp
+        subdeps/aoo/lib/aoo/aoo.h
+        subdeps/aoo/lib/aoo/aoo.hpp
+        subdeps/aoo/lib/aoo/aoo_net.h
+        subdeps/aoo/lib/aoo/aoo_net.hpp
+        subdeps/aoo/lib/aoo/aoo_opus.h
+        subdeps/aoo/lib/aoo/aoo_pcm.h
+        subdeps/aoo/lib/aoo/aoo_types.h
+        subdeps/aoo/lib/aoo/aoo_utils.hpp
         
-        deps/aoo/deps/md5/md5.c
-        deps/aoo/deps/md5/md5.h
-        deps/aoo/deps/oscpack/osc/OscOutboundPacketStream.cpp
-        deps/aoo/deps/oscpack/osc/OscPrintReceivedElements.cpp
-        deps/aoo/deps/oscpack/osc/OscReceivedElements.cpp
-        deps/aoo/deps/oscpack/osc/OscTypes.cpp
-        deps/aoo/deps/oscpack/osc/MessageMappingOscPacketListener.h
-        deps/aoo/deps/oscpack/osc/OscException.h
-        deps/aoo/deps/oscpack/osc/OscHostEndianness.h
-        deps/aoo/deps/oscpack/osc/OscOutboundPacketStream.h
-        deps/aoo/deps/oscpack/osc/OscPacketListener.h
-        deps/aoo/deps/oscpack/osc/OscPrintReceivedElements.h
-        deps/aoo/deps/oscpack/osc/OscReceivedElements.h
-        deps/aoo/deps/oscpack/osc/OscTypes.h
+        subdeps/aoo/deps/md5/md5.c
+        subdeps/aoo/deps/md5/md5.h
+        subdeps/aoo/deps/oscpack/osc/OscOutboundPacketStream.cpp
+        subdeps/aoo/deps/oscpack/osc/OscPrintReceivedElements.cpp
+        subdeps/aoo/deps/oscpack/osc/OscReceivedElements.cpp
+        subdeps/aoo/deps/oscpack/osc/OscTypes.cpp
+        subdeps/aoo/deps/oscpack/osc/MessageMappingOscPacketListener.h
+        subdeps/aoo/deps/oscpack/osc/OscException.h
+        subdeps/aoo/deps/oscpack/osc/OscHostEndianness.h
+        subdeps/aoo/deps/oscpack/osc/OscOutboundPacketStream.h
+        subdeps/aoo/deps/oscpack/osc/OscPacketListener.h
+        subdeps/aoo/deps/oscpack/osc/OscPrintReceivedElements.h
+        subdeps/aoo/deps/oscpack/osc/OscReceivedElements.h
+        subdeps/aoo/deps/oscpack/osc/OscTypes.h
     )
 ]]
     
@@ -423,7 +423,7 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
     # The source tree should uhhh, still look like the source tree, yo
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/Source PREFIX "" FILES ${SourceFiles})
     
-    #source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/deps/aoo PREFIX "aoo" FILES ${AOOSourceFiles})
+    #source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/subdeps/aoo PREFIX "aoo" FILES ${AOOSourceFiles})
 
     # Move the INTERFACE auto-created JUCE library stuff into its own folder
     source_group("JUCE Library Code" REGULAR_EXPRESSION "juce_")

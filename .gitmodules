@@ -1,0 +1,11 @@
+[submodule "subdeps/aoo"]
+	path = subdeps/aoo
+	url = https://github.com/essej/aoo.git
+	branch = develop
+[submodule "subdeps/juce"]
+	path = subdeps/juce
+	url = https://github.com/essej/JUCE.git
+	branch = sono8good
+[submodule "subdeps/ff_meters"]
+	path = subdeps/ff_meters
+	url = https://github.com/ffAudio/ff_meters.git
