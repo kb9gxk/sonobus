@@ -2,13 +2,19 @@
 
 #include "detail.hpp"
 
-#include "aoo/aoo_events.h"
+#include "aoo_events.h"
 
 #include "common/net_utils.hpp"
 
 #include "memory.hpp"
 
+#ifndef AOO_EVENT_RT_MEMORY
+#define AOO_EVENT_RT_MEMORY 1
+#endif
+
+#ifndef AOO_DEBUG_EVENT_MEMORY
 #define AOO_DEBUG_EVENT_MEMORY 0
+#endif
 
 #if AOO_DEBUG_EVENT_MEMORY
 # define LOG_EVENT(x) LOG_DEBUG(x)
@@ -18,21 +24,26 @@
 
 namespace aoo {
 
-#define RT_CLASS(x)                     \
-    void * operator new (size_t size) { \
-        LOG_EVENT("allocate " #x);      \
-        return rt_allocate(size);       \
-    }                                   \
-                                        \
-    void operator delete (void *ptr) {  \
-        LOG_EVENT("deallocate " #x);    \
-        rt_deallocate(ptr, sizeof(x));  \
-    }                                   \
-
+#if AOO_EVENT_RT_MEMORY
+#define RT_CLASS(x)                                                 \
+    void * operator new (size_t size) {                             \
+        LOG_EVENT("allocate " #x " (" << size << " bytes)");        \
+        return rt_allocate(size);                                   \
+    }                                                               \
+                                                                    \
+    void operator delete (void *ptr) {                              \
+        LOG_EVENT("deallocate " #x " (" << sizeof(x) << " bytes)"); \
+        rt_deallocate(ptr, sizeof(x));                              \
+    }
+#else
+#define RT_CLASS(x)
+#endif
 
 struct ievent {
     virtual ~ievent() {}
 
+    // we cannot directly cast an ievent pointer to a AooEvent pointer because
+    // of the hidden vtable pointer. That's why there is an explicit cast method.
     AooEvent& cast();
 };
 
@@ -44,7 +55,21 @@ event_ptr make_event(Args&&... args) {
 }
 
 template<typename T>
-struct base_event : ievent, T {
+struct alignas(AooEvent) aligned_event : T {};
+
+// IMPORTANT: make sure that T has the same alignment as AooEvent!
+// On some 32-bit system, e.g. 32-bit Windows, 64-bit integers and doubles
+// have an alignment of 8 bytes. Since ievent only has an alignment of 4 bytes,
+// this could create misaligned AooEvent pointers when casting an ievent pointer
+// to an AooEvent pointer via ievent::cast().
+//
+// (Normally, this wouldn't matter because the actual underlying AOO event always
+// has the appropriate alignment and the AooEvent pointer is only used for accessing
+// the 'type' field. However, some platforms apparently check the pointer alignment
+// at runtime, e.g. in debug builds, and would therefore complain about misaligned
+// AooEvent pointers.)
+template<typename T>
+struct base_event : ievent, aligned_event<T> {
     virtual ~base_event() {}
 
     base_event(AooEventType type_, size_t size) {
@@ -59,14 +84,16 @@ struct base_event : ievent, T {
 #define BASE_EVENT(name, field) \
     k##name, AOO_STRUCT_SIZE(name, field)
 
-// only for casting
-struct cast_event : base_event<AooEventBase> {
-    cast_event() = delete;
+// AooEvent cannot be used as the template argument for base_event because
+// unions cannot be base classes. That's why we make this helper struct.
+struct cast_event {
+    AooEvent event;
 };
 
 inline AooEvent& ievent::cast() {
-    auto ptr = static_cast<AooEventBase *>(static_cast<cast_event *>(this));
-    return *reinterpret_cast<AooEvent *>(ptr);
+    // we cannot directly cast from ievent to AooEvent, so we have to go
+    // through base_event<cast_event>.
+    return static_cast<base_event<cast_event>*>(this)->event;
 }
 
 template<typename T>
@@ -100,7 +127,8 @@ struct sink_add_event : endpoint_event<AooEventEndpoint> {
 struct invite_event : endpoint_event<AooEventInvite> {
     RT_CLASS(invite_event)
 
-    invite_event(const ip_address& addr, AooId id, AooId token, const AooData *md)
+    invite_event(const ip_address& addr, AooId id, AooId token,
+                 const std::optional<AooData>& md)
         : endpoint_event(BASE_EVENT(AooEventInvite, metadata), addr, id) {
         this->token = token;
         if (md) {
@@ -135,24 +163,26 @@ struct source_ping_event : endpoint_event<AooEventSourcePing> {
 
     source_ping_event(const aoo::endpoint& ep,
                       aoo::time_tag tt1, aoo::time_tag tt2,
-                      aoo::time_tag tt3)
-        : endpoint_event(BASE_EVENT(AooEventSourcePing, t3), ep) {
+                      aoo::time_tag tt3, aoo::time_tag tt4)
+        : endpoint_event(BASE_EVENT(AooEventSourcePing, t4), ep) {
         this->t1 = tt1;
         this->t2 = tt2;
         this->t3 = tt3;
+        this->t4 = tt4;
     }
 };
 
 struct sink_ping_event : endpoint_event<AooEventSinkPing> {
-    RT_CLASS(source_ping_event)
+    RT_CLASS(sink_ping_event)
 
     sink_ping_event(const aoo::endpoint& ep,
                     aoo::time_tag tt1, aoo::time_tag tt2,
-                    aoo::time_tag tt3, float packetloss)
+                    aoo::time_tag tt3, aoo::time_tag tt4, float packetloss)
         : endpoint_event(BASE_EVENT(AooEventSinkPing, packetLoss), ep) {
         this->t1 = tt1;
         this->t2 = tt2;
         this->t3 = tt3;
+        this->t4 = tt4;
         this->packetLoss = packetloss;
     }
 };
@@ -175,8 +205,9 @@ struct format_change_event : endpoint_event<AooEventFormatChange> {
 struct stream_start_event : endpoint_event<AooEventStreamStart> {
     RT_CLASS(stream_start_event)
 
-    stream_start_event(const aoo::endpoint& ep, const AooData *md)
+    stream_start_event(const aoo::endpoint& ep, aoo::time_tag tt, const AooData *md)
         : endpoint_event(BASE_EVENT(AooEventStreamStart, metadata), ep) {
+        this->tt = tt;
         this->metadata = md; // metadata is moved!
     }
 
@@ -205,6 +236,30 @@ struct stream_state_event : endpoint_event<AooEventStreamState> {
     }
 };
 
+struct stream_time_event : endpoint_event<AooEventStreamTime> {
+    RT_CLASS(stream_time_event)
+
+    stream_time_event(const aoo::endpoint& ep, AooNtpTime source_tt,
+                      AooNtpTime sink_tt, int32_t offset)
+        : endpoint_event(BASE_EVENT(AooEventStreamTime, sampleOffset), ep) {
+        this->sourceTime = source_tt;
+        this->sinkTime = sink_tt;
+        this->sampleOffset = offset;
+    }
+};
+
+struct stream_latency_event : endpoint_event<AooEventStreamLatency> {
+    RT_CLASS(stream_latency_event)
+
+    stream_latency_event(const aoo::endpoint& ep, AooSeconds source_latency,
+                         AooSeconds sink_latency, AooSeconds buffer_latency)
+        : endpoint_event(BASE_EVENT(AooEventStreamLatency, bufferLatency), ep) {
+        this->sourceLatency = source_latency;
+        this->sinkLatency = sink_latency;
+        this->bufferLatency = buffer_latency;
+    }
+};
+
 struct block_event : endpoint_event<AooEventBlock> {
     RT_CLASS(block_event)
 
@@ -227,6 +282,13 @@ struct block_resend_event : block_event {
 struct block_xrun_event : block_event {
     block_xrun_event(const aoo::endpoint& ep, int32_t count)
         : block_event(kAooEventBlockXRun, ep, count) {}
+};
+
+struct frame_resend_event : endpoint_event<AooEventFrameResend> {
+    frame_resend_event(const aoo::endpoint& ep, int32_t count)
+        : endpoint_event(kAooEventFrameResend, AOO_STRUCT_SIZE(AooEventFrameResend, count), ep) {
+        this->count = count;
+    }
 };
 
 } // namespace aoo

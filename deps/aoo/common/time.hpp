@@ -31,7 +31,7 @@ struct time_tag {
         if (t2 >= t1){
             return (t2 - t1).to_seconds();
         } else {
-            LOG_DEBUG("time_tag::duration: t2 is smaller than t1!");
+            // LOG_DEBUG("time_tag::duration: t2 is smaller than t1!");
             return (t1 - t2).to_seconds() * -1.0;
         }
     }
@@ -97,6 +97,6 @@ private:
 
 //----------------- NTP server -----------------------//
 
-bool check_ntp_server(std::string& msg);
+std::pair<bool, std::string> check_ntp_server();
 
 } // aoo

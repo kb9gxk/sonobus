@@ -1,13 +1,13 @@
-/* Copyright (c) 2010-Now Christof Ressi, Winfried Ritsch and others. 
+/* Copyright (c) 2010-Now Christof Ressi, Winfried Ritsch and others.
  * For information on usage and redistribution, and for a DISCLAIMER OF ALL
  * WARRANTIES, see the file, "LICENSE.txt," in this distribution.  */
 
 #include "aoo_common.hpp"
 
-#include "aoo/aoo_source.hpp"
+#include "aoo_source.hpp"
 
-#if AOO_USE_CODEC_OPUS
-# include "aoo/codec/aoo_opus.h"
+#if AOO_USE_OPUS
+# include "codec/aoo_opus.h"
 #endif
 
 #include <vector>
@@ -49,17 +49,17 @@ struct t_aoo_send
 
     t_float x_f = 0;
     AooSource::Ptr x_source;
-    t_symbol *x_codec = nullptr;
+    std::vector<t_atom> x_format;
     int32_t x_samplerate = 0;
     int32_t x_blocksize = 0;
     int32_t x_nchannels = 0;
     int32_t x_port = 0;
     AooId x_id = 0;
     double x_logicaltime = 0;
-    std::unique_ptr<t_float *[]> x_vec;
-    // metadata
-    AooDataType x_metadata_type;
-    std::vector<AooByte> x_metadata;
+    std::unique_ptr<t_sample *[]> x_vec;
+#if PD_FLOATSIZE != AOO_SAMPLE_SIZE
+    std::vector<AooSample> x_buffer;
+#endif
     // sinks
     std::vector<t_sink> x_sinks;
     // node
@@ -69,7 +69,11 @@ struct t_aoo_send
     t_outlet *x_msgout = nullptr;
     // (un)invite
     AooId x_invite_token = kAooIdInvalid;
+    bool x_running = false;
     bool x_auto_invite = true; // on by default
+    bool x_multi = false;
+
+    void update_format();
 
     bool get_sink_arg(int argc, t_atom *argv,
                       aoo::ip_address& addr, AooId& id, bool check) const;
@@ -86,6 +90,14 @@ struct t_aoo_send
 
     const t_sink *find_sink(const aoo::ip_address& addr, AooId id) const;
 };
+
+void t_aoo_send::update_format()
+{
+    AooFormatStorage fmt;
+    format_parse((t_pd*)this, fmt, x_format.size(), x_format.data(),
+                 x_nchannels, x_samplerate, x_blocksize);
+    x_source->setFormat(fmt.header);
+}
 
 bool t_aoo_send::get_sink_arg(int argc, t_atom *argv,
                               aoo::ip_address& addr, AooId& id, bool check) const
@@ -187,7 +199,7 @@ void t_aoo_send::add_sink(const aoo::ip_address& addr, AooId id)
 
 void t_aoo_send::remove_all()
 {
-    x_source->removeAll();
+    x_source->removeAllSinks();
 
     int numsinks = x_sinks.size();
     if (!numsinks){
@@ -241,7 +253,7 @@ const t_sink *t_aoo_send::find_sink(const aoo::ip_address& addr, AooId id) const
     return nullptr;
 }
 
-#if AOO_USE_CODEC_OPUS
+#if AOO_USE_OPUS
 
 static bool get_opus_bitrate(t_aoo_send *x, t_atom *a) {
     opus_int32 value;
@@ -376,8 +388,9 @@ static void aoo_send_codec_set(t_aoo_send *x, t_symbol *s, int argc, t_atom *arg
     if (!x->check(argc, argv, 2, "codec_set")) return;
 
     auto name = atom_getsymbol(argv);
-#if AOO_USE_CODEC_OPUS
-    if (x->x_codec == gensym("opus")){
+    t_symbol *codec = atom_getsymbolarg(0, x->x_format.size(), x->x_format.data());
+#if AOO_USE_OPUS
+    if (codec == gensym("opus")){
         opus_int32 value;
         if (name == gensym("bitrate")){
             set_opus_bitrate(x, argv + 1);
@@ -392,7 +405,7 @@ static void aoo_send_codec_set(t_aoo_send *x, t_symbol *s, int argc, t_atom *arg
     }
 #endif
     pd_error(x,"%s: unknown parameter '%s' for codec '%s'",
-             classname(x), name->s_name, x->x_codec->s_name);
+             classname(x), name->s_name, codec->s_name);
 }
 
 static void aoo_send_codec_get(t_aoo_send *x, t_symbol *s){
@@ -401,8 +414,9 @@ static void aoo_send_codec_get(t_aoo_send *x, t_symbol *s){
     t_atom msg[2];
     SETSYMBOL(msg, s);
 
-#if AOO_USE_CODEC_OPUS
-    if (x->x_codec == gensym("opus")){
+    t_symbol *codec = atom_getsymbolarg(0, x->x_format.size(), x->x_format.data());
+#if AOO_USE_OPUS
+    if (codec == gensym("opus")){
         if (s == gensym("bitrate")){
             if (get_opus_bitrate(x, msg + 1)){
                 goto codec_sendit;
@@ -425,7 +439,7 @@ static void aoo_send_codec_get(t_aoo_send *x, t_symbol *s){
     }
 #endif
     pd_error(x,"%s: unknown parameter '%s' for codec '%s'",
-             classname(x), s->s_name, x->x_codec->s_name);
+             classname(x), s->s_name, codec->s_name);
     return;
 
 codec_sendit:
@@ -441,6 +455,7 @@ static void aoo_send_handle_event(t_aoo_send *x, const AooEvent *event, int32_t)
     case kAooEventUninvite:
     case kAooEventSinkAdd:
     case kAooEventSinkRemove:
+    case kAooEventFrameResend:
     {
         // common endpoint header
         auto& ep = event->endpoint.endpoint;
@@ -458,21 +473,25 @@ static void aoo_send_handle_event(t_aoo_send *x, const AooEvent *event, int32_t)
 
             x->x_invite_token = e.token;
             if (x->x_auto_invite) {
-                // accept by default
-                x->x_source->handleInvite(ep, e.token, true);
+                // accept by default if streaming; decline otherwise
+                x->x_source->handleInvite(ep, e.token, x->x_running);
+                if (!x->x_running) {
+                    return; // don't send "invite" event!
+                }
             }
-
-            if (e.metadata){
-                auto count = e.metadata->size + 4;
+            // Send "invite" event.
+            // In manual mode, the user is supposed to handle the invitation;
+            // in auto mode, we want to tell the user that the sink has been
+            // activated (together with the metadata).
+            if (e.metadata) {
+                // <ip> <port> <id> <type> <data...>
+                auto count = 4 + (e.metadata->size / datatype_element_size(e.metadata->type));
                 t_atom *vec = (t_atom *)alloca(count * sizeof(t_atom));
                 // copy endpoint
                 memcpy(vec, msg, 3 * sizeof(t_atom));
-                // type
-                datatype_to_atom(e.metadata->type, vec[3]);
-                // data
-                for (int i = 0; i < e.metadata->size; ++i){
-                    SETFLOAT(vec + 4 + i, (uint8_t)e.metadata->data[i]);
-                }
+                // copy data
+                data_to_atoms(*e.metadata, count - 3, vec + 3);
+
                 outlet_anything(x->x_msgout, gensym("invite"), count, vec);
             } else {
                 outlet_anything(x->x_msgout, gensym("invite"), 3, msg);
@@ -486,7 +505,10 @@ static void aoo_send_handle_event(t_aoo_send *x, const AooEvent *event, int32_t)
                 // accept by default
                 x->x_source->handleUninvite(ep, event->uninvite.token, true);
             }
-
+            // Send "uninvite" event.
+            // In manual mode, the user is supposed to handle the uninvitation;
+            // in auto mode, we want to tell the user that the sink has been
+            // deactivated.
             outlet_anything(x->x_msgout, gensym("uninvite"), 3, msg);
 
             break;
@@ -497,8 +519,8 @@ static void aoo_send_handle_event(t_aoo_send *x, const AooEvent *event, int32_t)
                 x->add_sink(addr, ep.id);
             } else {
                 // the sink might have been added concurrently by the user (very unlikely)
-                verbose(0, "sink %s %d %d already added",
-                        addr.name(), addr.port(), ep.id);
+                logpost(x, PD_DEBUG, "%s: sink %s %d %d already added",
+                        classname(x), addr.name(), addr.port(), ep.id);
             }
             break;
         }
@@ -508,8 +530,8 @@ static void aoo_send_handle_event(t_aoo_send *x, const AooEvent *event, int32_t)
                 x->remove_sink(addr, ep.id);
             } else {
                 // the sink might have been removed concurrently by the user (very unlikely)
-                verbose(0, "sink %s %d %d already removed",
-                        addr.name(), addr.port(), ep.id);
+                logpost(x, PD_DEBUG, "%s: sink %s %d %d already removed",
+                        classname(x), addr.name(), addr.port(), ep.id);
             }
             break;
         }
@@ -518,18 +540,25 @@ static void aoo_send_handle_event(t_aoo_send *x, const AooEvent *event, int32_t)
         {
             auto& e = event->sinkPing;
 
-            double diff1 = aoo_ntpTimeDuration(e.t1, e.t2) * 1000.0;
-            double diff2 = aoo_ntpTimeDuration(e.t2, e.t3) * 1000.0;
-            double rtt = aoo_ntpTimeDuration(e.t1, e.t3) * 1000.0;
+            double delta1 = aoo_ntpTimeDuration(e.t1, e.t2) * 1000.0;
+            double delta2 = aoo_ntpTimeDuration(e.t3, e.t4) * 1000.0;
+            double total_rtt = aoo_ntpTimeDuration(e.t1, e.t4) * 1000.0;
+            double network_rtt = total_rtt - aoo_ntpTimeDuration(e.t2, e.t3) * 1000;
 
-            SETSYMBOL(msg + 3, gensym("ping"));
-            SETFLOAT(msg + 4, diff1);
-            SETFLOAT(msg + 5, diff2);
-            SETFLOAT(msg + 6, rtt);
+            SETFLOAT(msg + 3, delta1);
+            SETFLOAT(msg + 4, delta2);
+            SETFLOAT(msg + 5, network_rtt);
+            SETFLOAT(msg + 6, total_rtt);
             SETFLOAT(msg + 7, e.packetLoss);
 
-            outlet_anything(x->x_msgout, gensym("event"), 8, msg);
+            outlet_anything(x->x_msgout, gensym("ping"), 8, msg);
 
+            break;
+        }
+        case kAooEventFrameResend:
+        {
+            SETFLOAT(msg + 3, event->frameResend.count);
+            outlet_anything(x->x_msgout, gensym("frame_resent"), 4, msg);
             break;
         }
         default:
@@ -540,7 +569,8 @@ static void aoo_send_handle_event(t_aoo_send *x, const AooEvent *event, int32_t)
         break; // !
     }
     default:
-        verbose(0, "%s: unknown event type (%d)", classname(x), event->type);
+        logpost(x, PD_VERBOSE, "%s: unknown event type (%d)",
+                classname(x), event->type);
         break;
     }
 }
@@ -553,25 +583,34 @@ static void aoo_send_tick(t_aoo_send *x)
 static void aoo_send_format(t_aoo_send *x, t_symbol *s, int argc, t_atom *argv)
 {
     AooFormatStorage f;
-    if (format_parse((t_pd *)x, f, argc, argv, x->x_nchannels)){
+    if (format_parse((t_pd *)x, f, argc, argv, x->x_nchannels,
+                     x->x_samplerate, x->x_blocksize)) {
         // Prevent user from accidentally creating huge number of channels.
         // This also helps to catch an issue with old patches (before 2.0-pre3),
         // which would pass the block size as the channel count because the
-        // "channel" argument hasn't been added yet.
-        if (f.header.numChannels > x->x_nchannels){
-            if (x->x_nchannels > 0) {
-                pd_error(x, "%s: 'channel' argument (%d) in 'format' message out of range!",
-                         classname(x), f.header.numChannels);
-                f.header.numChannels = x->x_nchannels;
-            } else {
-                // if we have no inputs, silently bash format to single channel
-                f.header.numChannels = 1;
+        // "channels" argument hasn't been added yet.
+        // NB: don't do this in multi-channel mode because the actual channel
+        // count may change after the fact!
+        // NB: neither do this for the "null" codec (= pure message streams)
+        // where we typically have no signal inlets.
+        if (!x->x_multi && (strcmp(f.header.codecName, "null") != 0)) {
+            if (f.header.numChannels > x->x_nchannels){
+                if (x->x_nchannels > 0) {
+                    pd_error(x, "%s: 'channel' argument (%d) in 'format' message out of range!",
+                             classname(x), f.header.numChannels);
+                    f.header.numChannels = x->x_nchannels;
+                } else {
+                    // if we have no inputs, silently bash format to single channel
+                    f.header.numChannels = 1;
+                }
             }
         }
 
         auto err = x->x_source->setFormat(f.header);
         if (err == kAooOk) {
-            x->x_codec = gensym(f.header.codecName);
+            // store original format for updates, see "dsp" method
+            x->x_format.assign(argv, argv + argc);
+
             // output actual format
             t_atom msg[16];
             int n = format_to_atoms(f.header, 16, msg);
@@ -615,16 +654,16 @@ static void aoo_send_uninvite(t_aoo_send *x, t_symbol *s, int argc, t_atom *argv
     }
 }
 
-static void aoo_send_channel(t_aoo_send *x, t_symbol *s, int argc, t_atom *argv)
+static void aoo_send_sink_channel(t_aoo_send *x, t_symbol *s, int argc, t_atom *argv)
 {
-    if (!x->check(argc, argv, 4, "channel")) return;
+    if (!x->check(argc, argv, 4, "sink_channel")) return;
 
     aoo::ip_address addr;
     AooId id;
     if (x->get_sink_arg(argc, argv, addr, id, true)){
         int32_t chn = atom_getfloat(argv + 3);
         AooEndpoint ep { addr.address(), (AooAddrSize)addr.length(), id };
-        x->x_source->setSinkChannelOnset(ep, chn);
+        x->x_source->setSinkChannelOffset(ep, chn);
     }
 }
 
@@ -638,6 +677,11 @@ static void aoo_send_ping(t_aoo_send *x, t_floatarg f)
     x->x_source->setPingInterval(f * 0.001);
 }
 
+static void aoo_send_stream_time(t_aoo_send *x, t_floatarg f)
+{
+    x->x_source->setStreamTimeSendInterval(f * 0.001);
+}
+
 static void aoo_send_resend(t_aoo_send *x, t_floatarg f)
 {
     x->x_source->setResendBufferSize(f * 0.001);
@@ -646,6 +690,27 @@ static void aoo_send_resend(t_aoo_send *x, t_floatarg f)
 static void aoo_send_redundancy(t_aoo_send *x, t_floatarg f)
 {
     x->x_source->setRedundancy(f);
+}
+
+static void aoo_send_resample_method(t_aoo_send *x, t_symbol *s)
+{
+    AooResampleMethod method;
+    std::string_view name = s->s_name;
+    if (name == "hold") {
+        method = kAooResampleHold;
+    } else if (name == "linear") {
+        method = kAooResampleLinear;
+    } else if (name == "cubic") {
+        method = kAooResampleCubic;
+    } else {
+        pd_error(x, "%s: bad resample method '%s'",
+                 classname(x), name.data());
+        return;
+    }
+    if (x->x_source->setResampleMethod(method) != kAooOk) {
+        pd_error(x, "%s: resample method '%s' not supported",
+                 classname(x), name.data());
+    }
 }
 
 static void aoo_send_dynamic_resampling(t_aoo_send *x, t_floatarg f)
@@ -658,9 +723,23 @@ static void aoo_send_dll_bandwidth(t_aoo_send *x, t_floatarg f)
     x->x_source->setDllBandwidth(f);
 }
 
+static void aoo_send_real_samplerate(t_aoo_send *x)
+{
+    AooSampleRate sr;
+    x->x_source->getRealSampleRate(sr);
+    t_atom msg;
+    SETFLOAT(&msg, sr);
+    outlet_anything(x->x_msgout, gensym("real_samplerate"), 1, &msg);
+}
+
 static void aoo_send_binary(t_aoo_send *x, t_floatarg f)
 {
-    x->x_source->setBinaryDataMsg(f);
+    x->x_source->setBinaryFormat(f);
+}
+
+static void aoo_send_buffersize(t_aoo_send *x, t_floatarg f)
+{
+    x->x_source->setBufferSize(f * 0.001);
 }
 
 static void aoo_send_add(t_aoo_send *x, t_symbol *s, int argc, t_atom *argv)
@@ -691,15 +770,17 @@ static void aoo_send_add(t_aoo_send *x, t_symbol *s, int argc, t_atom *argv)
         bool active = argc > 3 ? atom_getfloat(argv + 3) : true;
         x->x_source->addSink(ep, active);
 
-        if (argc > 4){
+        // not yet implemented
+        if (argc > 4) {
             int channel = atom_getfloat(argv + 4);
-            x->x_source->setSinkChannelOnset(ep, channel);
+            x->x_source->setSinkChannelOffset(ep, channel);
         }
 
         x->add_sink(addr, id);
 
         // print message (use actual IP address)
-        verbose(0, "added sink %s %d %d", addr.name(), addr.port(), id);
+        logpost(x, PD_DEBUG, "%s: added sink %s %d %d",
+                classname(x), addr.name(), addr.port(), id);
     }
 }
 
@@ -725,27 +806,51 @@ static void aoo_send_remove(t_aoo_send *x, t_symbol *s, int argc, t_atom *argv)
 
         x->remove_sink(addr, id);
 
-        verbose(0, "removed sink %s %d %d", addr.name(), addr.port(), id);
+        logpost(x, PD_DEBUG, "%s: removed sink %s %d %d",
+                classname(x), addr.name(), addr.port(), id);
     }
 }
 
-static void aoo_send_start(t_aoo_send *x)
+static void aoo_send_start(t_aoo_send *x, t_symbol *s, int argc, t_atom *argv)
 {
-    if (!x->x_metadata.empty()){
-        AooData md;
-        md.type = x->x_metadata_type;
-        md.data = x->x_metadata.data();
-        md.size = x->x_metadata.size();
-
-        x->x_source->startStream(&md);
-    } else {
-        x->x_source->startStream(nullptr);
+    int32_t offset = clock_gettimesince(x->x_logicaltime) * 0.001 * x->x_samplerate;
+    // in case "start" is sent while DSP is off...
+    if (offset >= x->x_blocksize) {
+        offset = 0;
     }
+    if (argc > 0) {
+        // with metadata
+        AooData metadata;
+        if (!atom_to_datatype(*argv, metadata.type, x)) {
+            return;
+        }
+        argc--; argv++;
+        if (!argc) {
+            pd_error(x, "%s: metadata must not be empty", classname(x));
+            return;
+        }
+        auto size = argc * datatype_element_size(metadata.type);
+        auto data = (AooByte *)alloca(size);
+        atoms_to_data(metadata.type, argc, argv, data, size);
+        metadata.size = size;
+        metadata.data = data;
+
+        x->x_source->startStream(offset, &metadata);
+    } else {
+        x->x_source->startStream(offset, nullptr);
+    }
+    x->x_running = true;
 }
 
 static void aoo_send_stop(t_aoo_send *x)
 {
-    x->x_source->stopStream();
+    int32_t offset = clock_gettimesince(x->x_logicaltime) * 0.001 * x->x_samplerate;
+    // in case "stop" is sent while DSP is off...
+    if (offset >= x->x_blocksize) {
+        offset = 0;
+    }
+    x->x_source->stopStream(offset);
+    x->x_running = false;
 }
 
 static void aoo_send_reset(t_aoo_send *x)
@@ -763,38 +868,6 @@ static void aoo_send_active(t_aoo_send *x, t_symbol *s, int argc, t_atom *argv)
         AooEndpoint ep { addr.address(), (AooAddrSize)addr.length(), id };
         bool active = atom_getfloat(argv + 3);
         x->x_source->activate(ep, active);
-    }
-}
-
-static void aoo_send_metadata(t_aoo_send *x, t_symbol *s, int argc, t_atom *argv)
-{
-    if (!argc){
-        return;
-    }
-    if (argc < 2) {
-        // empty metadata is not allowed
-        pd_error(x, "%s: metadata must not be empty", classname(x));
-    #if 1
-        x->x_metadata_type = kAooDataUnspecified;
-        x->x_metadata.clear();
-    #endif
-        return;
-    }
-    // metadata type
-    AooDataType type;
-    if (!atom_to_datatype(*argv, type, x)) {
-    #if 1
-        x->x_metadata_type = kAooDataUnspecified;
-        x->x_metadata.clear();
-    #endif
-        return;
-    }
-    x->x_metadata_type = type;
-    // metadata content
-    auto size = argc - 1;
-    x->x_metadata.resize(size);
-    for (int i = 0; i < size; ++i){
-        x->x_metadata[i] = (AooByte)atom_getfloat(argv + i + 1);
     }
 }
 
@@ -819,20 +892,29 @@ static void aoo_send_list(t_aoo_send *x, t_symbol *s, int argc, t_atom *argv)
     if (argc < 2) {
         return;
     }
+
     AooStreamMessage msg;
-    if (!atom_to_datatype(argv[0], msg.type, x)) {
-        return;
-    }
     auto delta = clock_gettimesince(x->x_logicaltime) * 0.001;
     msg.sampleOffset = delta * x->x_samplerate;
-    msg.size = argc - 1;
-    auto buffer = (AooByte *)alloca(msg.size);
-    for (int i = 0; i < msg.size; ++i) {
-        buffer[i] = (AooByte)atom_getfloat(argv + i + 1);
+    msg.channel = std::max<int32_t>(atom_getfloat(argv), 0);
+    if (!atom_to_datatype(argv[1], msg.type, x)) {
+        return;
     }
-    msg.data = buffer;
+    argc -= 2; argv += 2;
+    if (!argc) {
+        pd_error(x, "%s: data must not be empty", classname(x));
+        return;
+    }
+    auto size = argc * datatype_element_size(msg.type);
+    auto buf = (AooByte *)alloca(size);
+    atoms_to_data(msg.type, argc, argv, buf, size);
+    msg.data = buf;
+    msg.size = size;
 
-    x->x_source->addStreamMessage(msg);
+    if (auto err = x->x_source->addStreamMessage(msg); err != kAooOk) {
+        pd_error(x, "%s: could not add stream message: %s",
+                 classname(x), aoo_strerror(err));
+    }
 }
 
 static t_int * aoo_send_perform(t_int *w)
@@ -840,17 +922,36 @@ static t_int * aoo_send_perform(t_int *w)
     t_aoo_send *x = (t_aoo_send *)(w[1]);
     int n = (int)(w[2]);
 
-    static_assert(sizeof(t_sample) == sizeof(AooSample),
-                  "AooSample size must match t_sample");
+    if (x->x_node) {
+#if PD_FLOATSIZE != AOO_SAMPLE_SIZE
+        // buffer input signals and convert to AooSample
+        AooSample** buf = nullptr;
+        if (auto nchannels = x->x_nchannels; nchannels > 0) {
+            buf = (AooSample**)alloca(nchannels * sizeof(AooSample*));
+            for (int i = 0; i < nchannels; ++i) {
+                auto src = x->x_vec[i];
+                auto dst = buf[i] = &x->x_buffer[i * n];
+                for (int k = 0; k < n; ++k) {
+                    dst[k] = src[k];
+                }
+            }
+        }
+#else
+        auto buf = x->x_vec.get();
+#endif
+        auto err = x->x_source->process(buf, n, get_osctime());
 
-    if (x->x_node){
-        auto err = x->x_source->process(x->x_vec.get(), n, get_osctime());
+        if (err == kAooErrorOverflow) {
+            pd_error(x, "%s: send buffer overflow. Try to manually increase "
+                     "the send buffer size with the 'buffersize' method or "
+                     "lower your hardware buffer size.", classname(x));
+        }
 
-        if (err != kAooErrorIdle){
+        if (err != kAooErrorIdle) {
             x->x_node->notify();
         }
 
-        if (x->x_source->eventsAvailable()){
+        if (x->x_source->eventsAvailable()) {
             clock_delay(x->x_clock, 0);
         }
     }
@@ -864,76 +965,88 @@ static void aoo_send_dsp(t_aoo_send *x, t_signal **sp)
 {
     int32_t blocksize = sp[0]->s_n;
     int32_t samplerate = sp[0]->s_sr;
-
-    for (int i = 0; i < x->x_nchannels; ++i){
-        x->x_vec[i] = sp[i]->s_vec;
+    int32_t nchannels;
+#ifdef PD_HAVE_MULTICHANNEL
+    if (x->x_multi) {
+        // NB: 's_nchans' only exists in Pd 0.54+
+        nchannels = sp[0]->s_nchans;
+        if (nchannels != x->x_nchannels) {
+            x->x_vec = std::make_unique<t_sample *[]>(nchannels);
+        }
+        for (int i = 0; i < nchannels; ++i){
+            x->x_vec[i] = &sp[0]->s_vec[i * blocksize];
+        }
+    } else
+#endif
+    {
+        nchannels = x->x_nchannels;
+        for (int i = 0; i < nchannels; ++i){
+            x->x_vec[i] = sp[i]->s_vec;
+        }
     }
+#if PD_FLOATSIZE != AOO_SAMPLE_SIZE
+    x->x_buffer.resize(nchannels * blocksize);
+#endif
 
-    if (blocksize != x->x_blocksize || samplerate != x->x_samplerate){
-        // synchronize with network threads!
-        if (x->x_node){
-            x->x_node->lock();
-        }
-        x->x_source->setup(x->x_nchannels, samplerate, blocksize, 0);
-        if (x->x_node){
-            x->x_node->unlock();
-        }
+    if (blocksize != x->x_blocksize || samplerate != x->x_samplerate
+            || nchannels != x->x_nchannels) {
+        x->x_source->setup(nchannels, samplerate, blocksize, kAooFixedBlockSize);
         x->x_blocksize = blocksize;
         x->x_samplerate = samplerate;
+        x->x_nchannels = nchannels;
+
+        x->update_format();
     }
 
     dsp_add(aoo_send_perform, 2, (t_int)x, (t_int)x->x_blocksize);
 }
 
-static void aoo_send_port(t_aoo_send *x, t_floatarg f)
+static void aoo_send_set(t_aoo_send *x, t_floatarg f1, t_floatarg f2)
 {
-    int port = f;
+    int port = f1;
+    AooId id = f2;
 
-    // 0 is allowed -> don't listen
-    if (port < 0){
-        pd_error(x, "%s: bad port %d", classname(x), port);
+    if (id == x->x_id && port == x->x_port) {
         return;
     }
 
-    if (x->x_node){
-        x->x_node->release((t_pd *)x, x->x_source.get());
-    }
-
-    if (port){
-        x->x_node = t_node::get((t_pd *)x, port, x->x_source.get(), x->x_id);
-    } else {
-        x->x_node = nullptr;
-    }
-
-    x->x_port = port;
-}
-
-static void aoo_send_id(t_aoo_send *x, t_floatarg f)
-{
-    AooId id = f;
-
-    if (id == x->x_id){
-        return;
-    }
-
-    if (id < 0){
+    if (id < 0) {
         pd_error(x, "%s: bad id %d", classname(x), id);
         return;
     }
 
-    if (x->x_node){
+    if (port < 0) {
+        // NB: 0 is allowed (= don't listen)!
+        pd_error(x, "%s: bad port %d", classname(x), id);
+        return;
+    }
+
+    // always release node!
+    if (x->x_node) {
         x->x_node->release((t_pd *)x, x->x_source.get());
     }
 
-    x->x_source->setId(id);
+    if (id != x->x_id) {
+        x->x_source->setId(id);
+        x->x_id = id;
+    }
 
-    if (x->x_port){
-        x->x_node = t_node::get((t_pd *)x, x->x_port, x->x_source.get(), x->x_id);
+    if (port) {
+        x->x_node = t_node::get((t_pd *)x, port, x->x_source.get(), id);
     } else {
         x->x_node = nullptr;
     }
+    x->x_port = port;
+}
 
-    x->x_id = id;
+static void aoo_send_port(t_aoo_send *x, t_floatarg f)
+{
+    aoo_send_set(x, f, x->x_id);
+}
+
+static void aoo_send_id(t_aoo_send *x, t_floatarg f)
+{
+    aoo_send_set(x, x->x_port, f);
 }
 
 static void * aoo_send_new(t_symbol *s, int argc, t_atom *argv)
@@ -946,54 +1059,96 @@ static void * aoo_send_new(t_symbol *s, int argc, t_atom *argv)
 t_aoo_send::t_aoo_send(int argc, t_atom *argv)
 {
     x_clock = clock_new(this, (t_method)aoo_send_tick);
-    x_metadata_type = kAooDataUnspecified;
 
-    // arg #1: port number
-    x_port = atom_getfloatarg(0, argc, argv);
+    // flags
+    while (argc && argv->a_type == A_SYMBOL) {
+        auto flag = argv->a_w.w_symbol->s_name;
+        if (*flag == '-') {
+            if (!strcmp(flag, "-m")) {
+                if (g_signal_setmultiout) {
+                    x_multi = true;
+                } else {
+                    pd_error(this, "%s: no multi-channel support, ignoring '-m' flag", classname(this));
+                }
+            } else {
+                pd_error(this, "%s: ignore unknown flag '%s",
+                         classname(this), flag);
+            }
+            argc--; argv++;
+        } else {
+            break;
+        }
+    }
 
-    // arg #2: ID
+    // arg #1: channels
+    int ninlets;
+    if (x_multi) {
+        // one multi-channel inlet
+        // NB: x_nchannels will be set in the "dsp" method and the format
+        // will be updated accordingly.
+        ninlets = 1;
+    } else {
+        // NB: users may explicitly specify 0 channels for pure message streams!
+        // (In this case, the user must provide the number of "message channels",
+        // if needed, with the "format" message.)
+        if (argc > 0) {
+            ninlets = atom_getfloat(argv);
+            argv++;
+            argc--;
+            if (ninlets < 0) {
+                ninlets = 0;
+            } else if (ninlets > AOO_MAX_NUM_CHANNELS) {
+                // see comment above AOO_MAX_NUM_CHANNELS
+                pd_error(this, "%s: channel count (%d) out of range",
+                         classname(this), ninlets);
+                ninlets = 0;
+            }
+        } else {
+            ninlets = 1; // default
+        }
+        x_nchannels = ninlets;
+    }
+
+    // arg #2/#1 (optional): port number
+    // NB: 0 means "don't listen"
+    int port = atom_getfloatarg(0, argc, argv);
+
+    // arg #3/#2 (optional): ID
     AooId id = atom_getfloatarg(1, argc, argv);
-    if (id < 0){
+    if (id < 0) {
         pd_error(this, "%s: bad id % d, setting to 0", classname(this), id);
         id = 0;
     }
     x_id = id;
 
-    // arg #3: num channels
-    int nchannels = argc >= 3 ? atom_getfloat(argv + 2) : 1;
-    if (nchannels < 0){
-        nchannels = 0;
-    }
-    x_nchannels = nchannels;
-
     // make additional inlets
-    if (nchannels > 1){
-        int i = nchannels;
-        while (--i){
-            inlet_new(&x_obj, &x_obj.ob_pd, &s_signal, &s_signal);
-        }
+    for (int i = 1; i < ninlets; i++) {
+        inlet_new(&x_obj, &x_obj.ob_pd, &s_signal, &s_signal);
     }
-    x_vec = nchannels > 0 ? std::make_unique<t_sample *[]>(nchannels) : nullptr;
-
+    // channel vector
+    if (x_nchannels > 0) {
+        x_vec = std::make_unique<t_sample *[]>(x_nchannels);
+    }
     // make event outlet
     x_msgout = outlet_new(&x_obj, 0);
 
     // create and initialize AooSource object
-    x_source = AooSource::create(x_id, nullptr);
+    x_source = AooSource::create(x_id);
 
     // set event handler
     x_source->setEventHandler((AooEventHandler)aoo_send_handle_event,
                               this, kAooEventModePoll);
 
-    AooFormatStorage fmt;
-    format_makedefault(fmt, nchannels);
-    x_source->setFormat(fmt.header);
-    x_codec = gensym(fmt.header.codecName);
+    // set default format
+    t_atom codec;
+    SETSYMBOL(&codec, gensym("pcm"));
+    x_format.push_back(codec);
+    update_format();
 
     x_source->setBufferSize(DEFBUFSIZE * 0.001);
 
     // finally we're ready to receive messages
-    aoo_send_port(this, x_port);
+    aoo_send_port(this, port);
 }
 
 static void aoo_send_free(t_aoo_send *x)
@@ -1014,7 +1169,7 @@ t_aoo_send::~t_aoo_send()
 void aoo_send_tilde_setup(void)
 {
     aoo_send_class = class_new(gensym("aoo_send~"), (t_newmethod)(void *)aoo_send_new,
-        (t_method)aoo_send_free, sizeof(t_aoo_send), 0, A_GIMME, A_NULL);
+        (t_method)aoo_send_free, sizeof(t_aoo_send), CLASS_MULTICHANNEL, A_GIMME, A_NULL);
     CLASS_MAINSIGNALIN(aoo_send_class, t_aoo_send, x_f);
     class_addlist(aoo_send_class, (t_method)aoo_send_list);
     class_addmethod(aoo_send_class, (t_method)aoo_send_dsp,
@@ -1023,6 +1178,8 @@ void aoo_send_tilde_setup(void)
                     gensym("port"), A_FLOAT, A_NULL);
     class_addmethod(aoo_send_class, (t_method)aoo_send_id,
                     gensym("id"), A_FLOAT, A_NULL);
+    class_addmethod(aoo_send_class, (t_method)aoo_send_set,
+                    gensym("set"), A_DEFFLOAT, A_DEFFLOAT, A_NULL);
     class_addmethod(aoo_send_class, (t_method)aoo_send_add,
                     gensym("add"), A_GIMME, A_NULL);
     class_addmethod(aoo_send_class, (t_method)aoo_send_remove,
@@ -1030,13 +1187,13 @@ void aoo_send_tilde_setup(void)
     class_addmethod(aoo_send_class, (t_method)aoo_send_active,
                     gensym("active"), A_GIMME, A_NULL);
     class_addmethod(aoo_send_class, (t_method)aoo_send_start,
-                    gensym("start"), A_NULL);
+                    gensym("start"), A_GIMME, A_NULL);
     class_addmethod(aoo_send_class, (t_method)aoo_send_stop,
                     gensym("stop"), A_NULL);
     class_addmethod(aoo_send_class, (t_method)aoo_send_reset,
                     gensym("reset"), A_NULL);
-    class_addmethod(aoo_send_class, (t_method)aoo_send_metadata,
-                    gensym("metadata"), A_GIMME, A_NULL);
+    class_addmethod(aoo_send_class, (t_method)aoo_send_sink_list,
+                    gensym("sink_list"), A_NULL);
     class_addmethod(aoo_send_class, (t_method)aoo_send_auto_invite,
                     gensym("auto_invite"), A_FLOAT, A_NULL);
     class_addmethod(aoo_send_class, (t_method)aoo_send_invite,
@@ -1049,22 +1206,28 @@ void aoo_send_tilde_setup(void)
                     gensym("codec_set"), A_GIMME, A_NULL);
     class_addmethod(aoo_send_class, (t_method)aoo_send_codec_get,
                     gensym("codec_get"), A_SYMBOL, A_NULL);
-    class_addmethod(aoo_send_class, (t_method)aoo_send_channel,
-                    gensym("channel"), A_GIMME, A_NULL);
+    class_addmethod(aoo_send_class, (t_method)aoo_send_sink_channel,
+                    gensym("sink_channel"), A_GIMME, A_NULL);
     class_addmethod(aoo_send_class, (t_method)aoo_send_packetsize,
                     gensym("packetsize"), A_FLOAT, A_NULL);
     class_addmethod(aoo_send_class, (t_method)aoo_send_ping,
                     gensym("ping"), A_FLOAT, A_NULL);
+    class_addmethod(aoo_send_class, (t_method)aoo_send_stream_time,
+                    gensym("stream_time"), A_FLOAT, A_NULL);
     class_addmethod(aoo_send_class, (t_method)aoo_send_resend,
                     gensym("resend"), A_FLOAT, A_NULL);
     class_addmethod(aoo_send_class, (t_method)aoo_send_redundancy,
                     gensym("redundancy"), A_FLOAT, A_NULL);
+    class_addmethod(aoo_send_class, (t_method)aoo_send_resample_method,
+                    gensym("resample_method"), A_SYMBOL, A_NULL);
     class_addmethod(aoo_send_class, (t_method)aoo_send_dynamic_resampling,
                     gensym("dynamic_resampling"), A_FLOAT, A_NULL);
     class_addmethod(aoo_send_class, (t_method)aoo_send_dll_bandwidth,
                     gensym("dll_bandwidth"), A_FLOAT, A_NULL);
+    class_addmethod(aoo_send_class, (t_method)aoo_send_real_samplerate,
+                    gensym("real_samplerate"), A_NULL);
     class_addmethod(aoo_send_class, (t_method)aoo_send_binary,
                     gensym("binary"), A_FLOAT, A_NULL);
-    class_addmethod(aoo_send_class, (t_method)aoo_send_sink_list,
-                    gensym("sink_list"), A_NULL);
+    class_addmethod(aoo_send_class, (t_method)aoo_send_buffersize,
+                    gensym("buffersize"), A_FLOAT, A_NULL);
 }

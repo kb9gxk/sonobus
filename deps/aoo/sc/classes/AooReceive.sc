@@ -1,20 +1,28 @@
 AooReceive : MultiOutUGen {
-	var <>desc;
+	var <>desc; // reference to desc in SynthDef metadata
 	var <>tag;
 	var <>port;
-	var <>id;
 
-	*ar { arg port, id=0, numChannels=1, bufsize, tag;
-		^this.multiNewList([\audio, tag, port, id, numChannels, bufsize]);
+	*ar { arg port, id=0, numChannels=1, latency=0.025, tag;
+		^this.multiNewList([\audio, tag, port, id, numChannels, latency]);
 	}
 	*kr { ^this.shouldNotImplement(thisMethod) }
 
-	init { arg tag, port, id, numChannels, bufsize;
-		this.tag = tag;
+	init { arg tag, port, id, numChannels, latency;
+		if (tag.isKindOf(UGen)) {
+			MethodError("'tag' must not be a UGen!", this).throw;
+		};
+		if (port.isInteger.not) {
+			MethodError("'port' must be an Integer!", this).throw;
+		};
+		this.tag = tag !? { tag.asSymbol }; // !
 		this.port = port;
-		this.id = id;
-		inputs = [port, id, bufsize ?? 0];
-		^this.initOutputs(numChannels, rate)
+		this.inputs = [port, id, latency ? 0, numChannels];
+		if (numChannels == 0) {
+			^0; // no outputs
+		} {
+			^this.initOutputs(numChannels, rate);
+		}
 	}
 
 	optimizeGraph {
@@ -24,7 +32,7 @@ AooReceive : MultiOutUGen {
 	synthIndex_ { arg index;
 		super.synthIndex_(index); // !
 		// update metadata (ignored if reconstructing from disk)
-		this.desc.notNil.if { this.desc.index = index; }
+		this.desc !? { |desc| desc.index = index };
 	}
 }
 
@@ -38,66 +46,106 @@ AooReceiveCtl : AooCtl {
 		ugenClass = AooReceive;
 	}
 
-	init { arg synth, synthIndex, port, id;
-		super.init(synth, synthIndex, port, id);
+	init {
 		sources = [];
 	}
 
-	prHandleEvent { arg type ... args;
-		// /format, /add, /state, /block/*, /ping
-		// currently, all events start with endpoint + id
-		var addr = this.prResolveAddr(AooAddr(args[0], args[1]));
-		var id = args[2];
-		var source = ( addr: addr, id: id );
-		var codec, fmt;
-		var event = (type == '/format').if {
-			// make AooFormat object from OSC args
-			codec = args[3];
-			fmt = codec.switch(
-				\pcm, { AooFormatPCM(*args[4..]) },
-				\opus, { AooFormatOpus(*args[4..]) },
-				{ "%: unknown format '%'".format(this.class.name, codec).error; nil }
-			);
-			[type, addr, id] ++ fmt;
-		} {
-			// pass OSC args unchanged
-			[type, addr, id] ++ args[3..]
-		};
-		// If source doesn't exist, fake an '/add' event.
-		// This happens if the source has been added
-		// before we could create the controller.
-		(this.prFind(source).isNil and: { type != '/add' }).if {
-			this.prAdd(source);
-			this.eventHandler.value('/add', addr, id);
-		};
-		type.switch(
-			'/add', { this.prAdd(source) },
-			'/remove', { this.prRemove(source) }
-		);
-		^event;
+	free {
+		super.free;
+		sources = nil;
 	}
 
-	prAdd { arg source;
+	prParseEvent { arg type, args;
+		// \ping, \format, \add, \remove, \decline, \inviteTimeout,
+		// \start, \stop, \state, \block/*
+		// currently, all events start with AOO endpoint
+		var addr = this.prResolveAddr(AooAddr(args[0], args[1]));
+		var id = args[2];
+		var source = AooEndpoint(addr, id);
+		var event = [source];
+		var codec, fmt, states = #[ \inactive, \active, \buffering ];
+		// If source doesn't exist, fake an \add event.
+		// This happens if the source has been added
+		// before we could create the controller.
+		if (this.prFindSource(source).isNil and: { type != \add }) {
+			this.prAddSource(source);
+			this.eventHandler.value(\add, event);
+		};
+		type.switch(
+			\ping, { ^event ++ args[3..] },
+			\add, { this.prAddSource(source); ^event },
+			\remove, { this.prRemoveSource(source); ^event },
+			\decline, { ^event },
+			\inviteTimeout, { ^event },
+			\uninviteTimeout, { ^event },
+			\format, {
+				// make AooFormat object from OSC args
+				codec = args[3].asSymbol;
+				fmt = codec.switch(
+					\pcm, { AooFormatPCM(*args[4..]) },
+					\opus, { AooFormatOpus(*args[4..]) },
+					{ "%: unknown format '%'".format(this.class.name, codec).error; nil }
+				);
+				^event ++ fmt;
+			},
+			\start, { ^event ++ AooData.fromBytes(*args[3..]) },
+			\stop, { ^event },
+			\state, {
+				^event ++ states[args[3]];
+			},
+			\latency, { ^event ++ args[3..] },
+			\blockDropped, { ^event ++ args[3] },
+			\blockResent, { ^event ++ args[3] },
+			\blockXRun, { ^event ++ args[3] },
+			\overrun, { ^event },
+			\underrun, { ^event },
+			{ "%: ignore unknown event '%'".format(this.class, type).warn; ^nil }
+		)
+	}
+
+	prAddSource { arg source;
 		this.sources = this.sources.add(source);
 	}
 
-	prRemove { arg source;
+	prRemoveSource { arg source;
 		var index = this.sources.indexOfEqual(source);
 		index !? { this.sources.removeAt(index) };
 	}
 
-	prFind { arg source;
+	prFindSource { arg source;
 		var index = this.sources.indexOfEqual(source);
 		^index !? { this.sources[index] };
 	}
 
-	invite { arg addr, id;
+	invite { arg addr, id, metadata, action;
+		var replyID = AooCtl.prNextReplyID;
 		addr = this.prResolveAddr(addr);
-		this.prSendMsg('/invite', nil, addr.ip, addr.port, id);
+
+		this.prMakeOSCFunc({ arg success, ip, port, id;
+			var newAddr, source;
+			success.if {
+				newAddr = this.prResolveAddr(AooAddr(ip, port));
+				source = AooEndpoint(newAddr, id);
+				this.prAddSource(source);
+				action.value(source);
+			} { action.value(nil) }
+		}, '/aoo/invite', replyID).oneShot;
+
+		if (metadata.notNil) {
+			this.prSendMsg('/invite', replyID, addr.ip, addr.port, id, *metadata.asOSCArgArray);
+		} {
+			this.prSendMsg('/invite', replyID, addr.ip, addr.port, id, $N, $N);
+		}
 	}
 
-	uninvite { arg addr, id;
+	uninvite { arg addr, id, action;
+		var replyID = AooCtl.prNextReplyID;
 		addr = this.prResolveAddr(addr);
+
+		this.prMakeOSCFunc({ arg success;
+			action.value(success);
+		}, '/aoo/uninvite', replyID).oneShot;
+
 		this.prSendMsg('/uninvite', nil, addr.ip, addr.port, id);
 	}
 
@@ -105,20 +153,16 @@ AooReceiveCtl : AooCtl {
 		this.prSendMsg('/uninvite');
 	}
 
-	packetSize_ { arg size;
-		this.prSendMsg('/packetsize',size);
+	pingInterval { arg seconds;
+		this.prSendMsg('/ping', seconds);
 	}
 
-	bufsize_ { arg sec;
-		this.prSendMsg('/bufsize', sec);
+	packetSize { arg size;
+		this.prSendMsg('/packet_size',size);
 	}
 
-	redundancy_ { arg n;
-		this.prSendMsg('/redundancy', n);
-	}
-
-	timeFilterBW_ { arg bw;
-		this.prSendMsg('/timefilter', bw);
+	latency { arg seconds;
+		this.prSendMsg('/latency', seconds);
 	}
 
 	reset { arg addr, id;
@@ -130,15 +174,27 @@ AooReceiveCtl : AooCtl {
 		this.prSendMsg('/reset');
 	}
 
-	resend_ { arg enable;
+	resend { arg enable;
 		this.prSendMsg('/resend', nil, enable);
 	}
 
-	resendLimit_ { arg limit;
+	resendLimit { arg limit;
 		this.prSendMsg('/resend_limit', nil, limit);
 	}
 
-	resendInterval_ { arg sec;
-		this.prSendMsg('/resend_interval', nil, sec);
+	resendInterval { arg seconds;
+		this.prSendMsg('/resend_interval', nil, seconds);
+	}
+
+	bufferSize { arg seconds;
+		this.prSendMsg('/buffer_size', seconds);
+	}
+
+	dynamicResampling { arg enable;
+		this.prSendMsg('/dynamic_resampling', enable);
+	}
+
+	dllBandwidth { arg bandwidth;
+		this.prSendMsg('/dll_bw', bandwidth);
 	}
 }

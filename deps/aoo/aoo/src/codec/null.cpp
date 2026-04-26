@@ -2,8 +2,8 @@
  * For information on usage and redistribution, and for a DISCLAIMER OF ALL
  * WARRANTIES, see the file, "LICENSE.txt," in this distribution.  */
 
-#include "aoo/aoo_codec.h"
-#include "aoo/codec/aoo_null.h"
+#include "aoo_codec.h"
+#include "codec/aoo_null.h"
 
 #include "../detail.hpp"
 
@@ -17,10 +17,10 @@ namespace {
 
 void print_format(const AooFormatNull& f)
 {
-    LOG_VERBOSE("Null codec settings: "
-                << "nchannels = " << f.header.numChannels
-                << ", blocksize = " << f.header.blockSize
-                << ", samplerate = " << f.header.sampleRate);
+    LOG_INFO("Null codec settings: "
+             << "nchannels = " << f.header.numChannels
+             << ", blocksize = " << f.header.blockSize
+             << ", samplerate = " << f.header.sampleRate);
 }
 
 bool validate_format(AooFormatNull& f, bool loud = true)
@@ -49,10 +49,6 @@ bool validate_format(AooFormatNull& f, bool loud = true)
         }
         f.header.sampleRate = 44100;
     }
-#if 1
-    // bash to single channel
-    f.header.numChannels = 1;
-#else
     // validate channels
     if (f.header.numChannels <= 0 || f.header.numChannels > 255){
         if (loud){
@@ -61,37 +57,35 @@ bool validate_format(AooFormatNull& f, bool loud = true)
         }
         f.header.numChannels = 1;
     }
-#endif
 
     return true;
 }
 
-//------------------- PCM codec -----------------------------//
+//------------------- null codec -----------------------------//
 
 struct NullCodec : AooCodec {
-    NullCodec(const AooFormatNull& f);
+    NullCodec();
+    int numChannels_ = 0;
 };
 
-AooCodec * AOO_CALL NullCodec_new(AooFormat *f, AooError *err){
+AooCodec * AOO_CALL NullCodec_new() {
+    return aoo::construct<NullCodec>();
+}
+
+void AOO_CALL NullCodec_free(AooCodec *c) {
+    aoo::destroy(static_cast<NullCodec *>(c));
+}
+
+AooError AOO_CALL NullCodec_setup(AooCodec *c, AooFormat *f) {
     auto fmt = (AooFormatNull*)f;
-    if (!validate_format(*fmt, true)){
-        if (err) {
-            *err = kAooErrorBadArgument;
-        }
-        return nullptr;
+    if (!validate_format(*fmt, true)) {
+        return kAooErrorBadArgument;
     }
+    static_cast<NullCodec*>(c)->numChannels_ = fmt->header.numChannels;
 
     print_format(*fmt);
 
-    if (err){
-        *err = kAooOk;
-    }
-
-    return aoo::construct<NullCodec>(*fmt);
-}
-
-void AOO_CALL NullCodec_free(AooCodec *c){
-    aoo::destroy(static_cast<NullCodec *>(c));
+    return kAooOk;
 }
 
 AooError AOO_CALL NullCodec_control(
@@ -99,16 +93,21 @@ AooError AOO_CALL NullCodec_control(
     switch (ctl){
     case kAooCodecCtlReset:
         // no op
-        return kAooOk;
+        break;
+    case kAooCodecCtlGetLatency:
+        assert(size == sizeof(AooInt32));
+        *reinterpret_cast<AooInt32 *>(ptr) = 0;
+        break;
     default:
         LOG_WARNING("Null codec: unsupported codec ctl " << ctl);
         return kAooErrorNotImplemented;
     }
+    return kAooOk;
 }
 
 AooError AOO_CALL NullCodec_encode(
-        AooCodec *enc,const AooSample *s, AooInt32 n,
-        AooByte *buf, AooInt32 *size)
+        AooCodec *c, const AooSample *inSamples, AooInt32 frameSize,
+        AooByte *outData, AooInt32 *size)
 {
     // do nothing
     *size = 0;
@@ -117,12 +116,14 @@ AooError AOO_CALL NullCodec_encode(
 }
 
 AooError AOO_CALL NullCodec_decode(
-        AooCodec *dec, const AooByte *buf, AooInt32 size,
-        AooSample *s, AooInt32 *n)
+        AooCodec *c, const AooByte *inData, AooInt32 size,
+        AooSample *outSamples, AooInt32 *frameSize)
 {
     // just zero
-    for (int i = 0; i < *n; ++i){
-        s[i] = 0;
+    auto dec = static_cast<NullCodec*>(c);
+    auto nsamples = (*frameSize) * dec->numChannels_;
+    for (int i = 0; i < nsamples; ++i) {
+        outSamples[i] = 0;
     }
     return kAooOk;
 }
@@ -150,15 +151,18 @@ AooError AOO_CALL deserialize(
 }
 
 AooCodecInterface g_interface = {
-    sizeof(AooCodecInterface),
+    AOO_STRUCT_SIZE(AooCodecInterface, deserialize),
+    kAooCodecNull,
     // encoder
     NullCodec_new,
     NullCodec_free,
+    NullCodec_setup,
     NullCodec_control,
     NullCodec_encode,
     // decoder
     NullCodec_new,
     NullCodec_free,
+    NullCodec_setup,
     NullCodec_control,
     NullCodec_decode,
     // helper
@@ -166,14 +170,14 @@ AooCodecInterface g_interface = {
     deserialize
 };
 
-NullCodec::NullCodec(const AooFormatNull& f) {
+NullCodec::NullCodec() {
     cls = &g_interface;
 }
 
 } // namespace
 
 void aoo_nullLoad(const AooCodecHostInterface *iface) {
-    iface->registerCodec(kAooCodecNull, &g_interface);
+    iface->registerCodec(&g_interface);
     // the dummy codec is always statically linked, so we can simply use the
     // internal log function and allocator
 }

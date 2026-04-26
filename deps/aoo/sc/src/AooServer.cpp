@@ -7,98 +7,110 @@ namespace {
 
 InterfaceTable *ft;
 
-using scoped_lock = aoo::sync::scoped_lock<aoo::sync::shared_mutex>;
-using scoped_shared_lock = aoo::sync::scoped_shared_lock<aoo::sync::shared_mutex>;
+// NB: only one World is ever accessing a given server;
+// we only need to protect the dictionary itself for concurrent
+// insertations/deletations.
+aoo::sync::mutex gServerMutex;
+std::unordered_map<int, std::shared_ptr<sc::AooServer>> gServerMap;
 
-aoo::sync::shared_mutex gServerMutex;
-
-using ServerMap = std::unordered_map<int, std::unique_ptr<sc::AooServer>>;
-std::unordered_map<World*, ServerMap> gServerMap;
-
-// called from NRT thread
-void addServer(World* world, int port, std::unique_ptr<sc::AooServer> server) {
-    scoped_lock lock(gServerMutex);
-    auto& serverMap = gServerMap[world];
-    serverMap[port] = std::move(server);
+// called from NRT thread(s). Throws on failure!
+std::shared_ptr<sc::AooServer> createServer(int port, const char *password,
+                                            bool relay) {
+    aoo::sync::scoped_lock lock(gServerMutex);
+    if (gServerMap.count(port)) {
+        char buf[256];
+        snprintf(buf, sizeof(buf),
+                 "server on port %d already exists", port);
+        throw std::runtime_error(buf);
+    }
+    auto server = std::make_shared<sc::AooServer>(port, password, relay);
+    gServerMap[port] = server;
+    return server;
 }
 
-// called from NRT thread
-void freeServer(World* world, int port) {
-    scoped_lock lock(gServerMutex);
-    auto it = gServerMap.find(world);
-    if (it != gServerMap.end()) {
-        auto& serverMap = it->second;
-        serverMap.erase(port);
+// called from NRT thread(s)
+bool destroyServer(int port) {
+    aoo::sync::scoped_lock lock(gServerMutex);
+    if (auto it = gServerMap.find(port); it != gServerMap.end()) {
+        gServerMap.erase(it);
+        return true;
+    } else {
+        LOG_ERROR("aoo: cannot free client - not found!");
+        return false;
     }
 }
 
-sc::AooServer* findServer(World* world, int port) {
-    scoped_shared_lock lock(gServerMutex);
-    auto it = gServerMap.find(world);
+#if 0
+
+std::shared_ptr<sc::AooServer> findServer(int port) {
+    aoo::sync::scoped_shared_lock lock(gServerMutex);
+    auto it = gServerMap.find(port);
     if (it != gServerMap.end()) {
-        auto& serverMap = it->second;
-        auto it2 = serverMap.find(port);
-        if (it2 != serverMap.end()) {
-            return it2->second.get();
-        }
+        return it->second;
+    } else {
+        return nullptr;
     }
-    return nullptr;
 }
+
+#endif
 
 } // namespace
 
 namespace sc {
 
 // called in NRT thread
-AooServer::AooServer(World *world, int port, const char *password)
-    : world_(world), port_(port)
+AooServer::AooServer(int port, const char *password, bool relay)
+    : port_(port)
 {
-    // setup UDP server
-    // TODO: increase socket receive buffer for relay? Use threaded receive?
-    udpserver_.start(port,
-                     [this](auto&&... args) { handleUdpReceive(args...); });
-
-    // setup TCP server
-    tcpserver_.start(port,
-                     [this](auto&&... args) { return handleAccept(args...); },
-                     [this](auto&&... args) { return handleReceive(args...); });
-
-    auto flags = aoo::socket_family(udpserver_.socket()) == aoo::ip_address::IPv6 ?
-                     kAooSocketDualStack : kAooSocketIPv4;
-
-    // success
-    server_ = ::AooServer::create(nullptr);
-    server_->setup(port, flags);
-    if (password) {
-        server_->setPassword(password);
-    }
-
-    LOG_VERBOSE("AooServer: listening on port " << port);
+    auto server = ::AooServer::create(); // does not really fail
 
     // first set event handler!
-    server_->setEventHandler([](void *x, const AooEvent *e, AooThreadLevel) {
+    server->setEventHandler([](void *x, const AooEvent *e, AooThreadLevel) {
         static_cast<sc::AooServer *>(x)->handleEvent(e);
     }, this, kAooEventModeCallback);
-    // then start network threads
-    udpthread_ = std::thread([this](){
-        udpserver_.run(-1);
+
+    if (password) {
+        server->setPassword(password);
+    }
+
+    server->setUseInternalRelay(relay);
+
+    // setup server
+    AooServerSettings settings;
+    settings.portNumber = port;
+    if (auto err = server->setup(settings); err != kAooOk) {
+        std::string msg;
+        if (err == kAooErrorSocket) {
+            msg = aoo::socket::strerror(aoo::socket::get_last_error());
+        } else {
+            msg = aoo_strerror(err);
+        }
+        throw std::runtime_error(msg);
+    }
+
+    server_ = std::move(server);
+
+    // finally start server threads
+    thread_ = std::thread([this]() {
+        aoo::sync::set_low_realtime_priority();
+        run();
     });
-    tcpthread_ = std::thread([this](){
-        tcpserver_.run();
+
+    udp_thread_ = std::thread([this]() {
+        aoo::sync::set_low_realtime_priority();
+        receive();
     });
+
+    LOG_INFO("AooServer: listening on port " << port);
 }
 
-AooServer::~AooServer(){
-    if (server_) {
-        udpserver_.stop();
-        if (udpthread_.joinable()) {
-            udpthread_.join();
-        }
-
-        tcpserver_.stop();
-        if (tcpthread_.joinable()) {
-            tcpthread_.join();
-        }
+AooServer::~AooServer() {
+    server_->stop();
+    if (thread_.joinable()) {
+        thread_.join();
+    }
+    if (udp_thread_.joinable()) {
+        udp_thread_.join();
     }
 }
 
@@ -111,38 +123,48 @@ void AooServer::handleEvent(const AooEvent *event){
     case kAooEventClientLogin:
     {
         auto& e = event->clientLogin;
-        msg << "/client/login" << e.id; // TODO metadata
+        if (e.error == kAooOk) {
+            // TODO: socket address
+            msg << "clientAdd" << e.id << e.version;
+            serializeData(msg, e.metadata);
+        } else {
+            LOG_WARNING("AooServer: client " << e.id << " failed to login: "
+                        << aoo_strerror(e.error));
+        }
+        break;
+    }
+    case kAooEventClientLogout:
+    {
+        auto& e = event->clientLogout;
+        msg << "clientRemove" << e.id << e.errorCode << e.errorMessage;
         break;
     }
     case kAooEventGroupAdd:
     {
         auto& e = event->groupAdd;
-        msg << "/group/add" << e.id << e.name; // TODO metadata
+        msg << "groupAdd" << e.id << e.name;
+        serializeData(msg, e.metadata);
         break;
     }
     case kAooEventGroupRemove:
     {
         auto& e = event->groupRemove;
-        msg << "/group/remove" << e.id;
+        msg << "groupRemove" << e.id << e.name;
         break;
     }
     case kAooEventGroupJoin:
     {
         auto& e = event->groupJoin;
-        msg << "/group/join" << e.groupId << e.userId
-            << e.userName << e.clientId;
+        msg << "groupJoin" << e.groupId << e.userId
+            << e.groupName << e.userName << e.clientId;
+        serializeData(msg, e.userMetadata);
         break;
     }
     case kAooEventGroupLeave:
     {
         auto& e = event->groupLeave;
-        msg << "/group/leave" << e.groupId << e.userId;
-        break;
-    }
-    case kAooEventError:
-    {
-        auto& e = event->error;
-        msg << "/error" << e.errorCode << e.errorMessage;
+        msg << "groupLeave" << e.groupId << e.userId
+            << e.groupName << e.userName;
         break;
     }
     default:
@@ -151,82 +173,36 @@ void AooServer::handleEvent(const AooEvent *event){
     }
 
     msg << osc::EndMessage;
-    ::sendMsgNRT(world_, msg);
+
+    ::sendReply(port_, msg);
 }
 
-AooId AooServer::handleAccept(int e, const aoo::ip_address& addr) {
-    if (e == 0) {
-        // reply function
-        auto replyfn = [](void *x, AooId client,
-                const AooByte *data, AooSize size) -> AooInt32 {
-            return static_cast<aoo::tcp_server *>(x)->send(client, data, size);
-        };
-        AooId client;
-        server_->addClient(replyfn, &tcpserver_, &client); // doesn't fail
-        addClient(client, addr);
-        return client;
-    } else {
-        LOG_ERROR("AooServer: accept() failed: " << aoo::socket_strerror(e));
-        // TODO handle error?
-        return kAooIdInvalid;
-    }
-}
-
-void AooServer::handleReceive(int e, AooId client, const aoo::ip_address& addr,
-                              const AooByte *data, AooSize size) {
-    if (e == 0 && size > 0) {
-        if (server_->handleClientMessage(client, data, size) != kAooOk) {
-            // close and remove client!
-            server_->removeClient(client);
-            tcpserver_.close(client);
-            removeClient(client);
-        }
-    } else {
-        // remove client!
-        server_->removeClient(client);
-        if (e == 0) {
-            LOG_VERBOSE("AooServer: client " << client << " disconnected");
+void AooServer::run() {
+    auto err = server_->run(kAooInfinite);
+    if (err != kAooOk) {
+        std::string msg;
+        if (err == kAooErrorSocket) {
+            msg = aoo::socket::strerror(aoo::socket::get_last_error());
         } else {
-            LOG_ERROR("AooServer: TCP error in client "
-                      << client << ": " << aoo::socket_strerror(e));
+            msg = aoo_strerror(err);
         }
-        removeClient(client);
+        LOG_ERROR("AooServer: server error: " << msg);
+        // TODO: handle error
     }
 }
 
-void AooServer::handleUdpReceive(int e, const aoo::ip_address& addr,
-                                 const AooByte *data, AooSize size) {
-    if (e == 0) {
-        // reply function
-        auto replyfn = [](void *x, const AooByte *data, AooInt32 size,
-                const void *address, AooAddrSize addrlen, AooFlag) -> AooInt32 {
-            aoo::ip_address addr((const struct sockaddr *)address, addrlen);
-            return static_cast<aoo::udp_server *>(x)->send(addr, data, size);
-        };
-        server_->handleUdpMessage(data, size, addr.address(), addr.length(),
-                                  replyfn, &udpserver_);
-    } else {
-        LOG_ERROR("AooServer: UDP error: " << aoo::socket_strerror(e));
-        // TODO handle error?
+void AooServer::receive() {
+    auto err = server_->receive(kAooInfinite);
+    if (err != kAooOk) {
+        std::string msg;
+        if (err == kAooErrorSocket) {
+            msg = aoo::socket::strerror(aoo::socket::get_last_error());
+        } else {
+            msg = aoo_strerror(err);
+        }
+        LOG_ERROR("AooServer: UDP error: " << msg);
+        // TODO: handle error
     }
-}
-
-void AooServer::addClient(AooId client, const aoo::ip_address& addr) {
-    char buf[1024];
-    osc::OutboundPacketStream msg(buf, sizeof(buf));
-    msg << osc::BeginMessage("/aoo/server/event") << port_
-        << "/client/add" << client << addr.name() << addr.port()
-        << osc::EndMessage;
-    ::sendMsgNRT(world_, msg);
-}
-
-void AooServer::removeClient(AooId client) {
-    char buf[1024];
-    osc::OutboundPacketStream msg(buf, sizeof(buf));
-    msg << osc::BeginMessage("/aoo/server/event") << port_
-        << "/client/remove" << client
-        << osc::EndMessage;
-    ::sendMsgNRT(world_, msg);
 }
 
 } // sc
@@ -244,38 +220,35 @@ void aoo_server_new(World* world, void* user,
 {
     auto port = args->geti();
     auto pwd = args->gets("");
+    auto relay = (bool)args->geti();
 
     auto cmdData = CmdData::create<sc::AooServerCreateCmd>(world);
     if (cmdData) {
         cmdData->port = port;
+        cmdData->relay = relay;
         snprintf(cmdData->password, sizeof(cmdData->password), "%s", pwd);
 
         auto fn = [](World* world, void* x) {
             auto data = (sc::AooServerCreateCmd *)x;
             auto port = data->port;
             auto pwd = data->password;
+            auto relay = data->relay;
 
             char buf[1024];
             osc::OutboundPacketStream msg(buf, sizeof(buf));
             msg << osc::BeginMessage("/aoo/server/new") << port;
 
-            if (findServer(world, port)) {
-                char errbuf[256];
-                snprintf(errbuf, sizeof(errbuf),
-                    "AooServer on port %d already exists.", port);
-                msg << 0 << errbuf;
-            } else {
-                try {
-                    auto server = std::make_unique<sc::AooServer>(world, port, pwd);
-                    addServer(world, port, std::move(server));
-                    msg << 1; // success
-                } catch (const std::runtime_error& e){
-                    msg << 0 << e.what();
-                }
-            }
+            try {
+                auto server = createServer(port, pwd, relay);
 
-            msg << osc::EndMessage;
-            ::sendMsgNRT(world, msg);
+                msg << (int32_t)1 << osc::EndMessage;
+
+                ::sendReply(port, msg);
+            } catch (const std::exception& e) {
+                msg << (int32_t)0 << e.what() << osc::EndMessage;
+
+                ::sendReply(port, msg);
+            }
 
             return false; // done
         };
@@ -296,13 +269,7 @@ void aoo_server_free(World* world, void* user,
         auto fn = [](World * world, void* data) {
             auto port = static_cast<sc::AooServerCmd*>(data)->port;
 
-            freeServer(world, port);
-
-            char buf[1024];
-            osc::OutboundPacketStream msg(buf, sizeof(buf));
-            msg << osc::BeginMessage("/aoo/server/free")
-                << port << osc::EndMessage;
-            ::sendMsgNRT(world, msg);
+            destroyServer(port);
 
             return false; // done
         };

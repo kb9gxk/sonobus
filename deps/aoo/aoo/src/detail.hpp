@@ -1,27 +1,31 @@
 #pragma once
 
-#include "aoo/aoo_codec.h"
-#include "aoo/aoo_config.h"
-#include "aoo/aoo_defines.h"
-#include "aoo/aoo_types.h"
+#include "aoo_codec.h"
+#include "aoo_config.h"
+#include "aoo_defines.h"
+#include "aoo_types.h"
 
 #include "memory.hpp"
 
 #include "common/net_utils.hpp"
 #include "common/lockfree.hpp"
+#include "common/log.hpp"
 #include "common/sync.hpp"
 #include "common/time.hpp"
 #include "common/utils.hpp"
 
-#include "oscpack/osc/OscReceivedElements.h"
-#include "oscpack/osc/OscOutboundPacketStream.h"
+#include "osc/OscReceivedElements.h"
+#include "osc/OscOutboundPacketStream.h"
 
-#include <stdint.h>
+#include <array>
 #include <cstring>
-#include <utility>
-#include <vector>
+#include <cstdint>
 #include <string>
+#include <string_view>
 #include <type_traits>
+#include <optional>
+#include <vector>
+#include <utility>
 
 namespace aoo {
 
@@ -46,11 +50,11 @@ using string = std::basic_string<char, std::char_traits<char>, aoo::allocator<ch
 template<typename T>
 using spsc_queue = lockfree::spsc_queue<T, aoo::allocator<T>>;
 
-template<typename T>
-using unbounded_mpsc_queue = lockfree::unbounded_mpsc_queue<T, aoo::allocator<T>>;
+template<typename T, bool multi_producer=true>
+using concurrent_queue = lockfree::concurrent_queue<T, multi_producer, aoo::allocator<T>>;
 
 template<typename T>
-using rcu_list = lockfree::rcu_list<T, aoo::allocator<T>>;
+using concurrent_list = lockfree::concurrent_list<T, aoo::allocator<T>>;
 
 //-------------------- sendfn-------------------------//
 
@@ -71,15 +75,35 @@ private:
     void *user_;
 };
 
+//--------------- ip_address -----------------------//
+
+#if 0
+using ip_address_list = std::vector<ip_address, aoo::allocator<ip_address>>;
+#else
+using ip_address_list = std::vector<ip_address>;
+#endif
+
+inline osc::OutboundPacketStream& operator<<(osc::OutboundPacketStream& msg, const ip_address& addr) {
+    msg << addr.name() << (int32_t)addr.port();
+    return msg;
+}
+
+inline ip_address osc_read_address(osc::ReceivedMessageArgumentIterator& it) {
+    auto hostname = (it++)->AsString();
+    auto port = (it++)->AsInt32();
+    return ip_address(hostname, port);
+}
+
 //---------------- endpoint ------------------------//
 
 struct endpoint {
     endpoint() = default;
-    endpoint(const ip_address& _address, int32_t _id)
-        : address(_address), id(_id) {}
+    endpoint(const ip_address& _address, int32_t _id, bool _binary)
+        : address(_address), id(_id), binary(_binary) {}
 #if AOO_NET
-    endpoint(const ip_address& _address, int32_t _id, const ip_address& _relay)
-        : address(_address), relay(_relay), id(_id) {}
+    endpoint(const ip_address& _address, const ip_address& _relay,
+             int32_t _id, bool _binary)
+        : address(_address), relay(_relay), id(_id), binary(_binary) {}
 #endif
     // data
     ip_address address;
@@ -87,6 +111,7 @@ struct endpoint {
     ip_address relay;
 #endif
     AooId id = 0;
+    bool binary = false;
 
     void send(const osc::OutboundPacketStream& msg, const sendfn& fn) const {
         send((const AooByte *)msg.Data(), msg.Size(), fn);
@@ -108,7 +133,7 @@ inline std::ostream& operator<<(std::ostream& os, const endpoint& ep){
 #if AOO_NET
 namespace net {
 AooSize write_relay_message(AooByte *buffer, AooSize bufsize, const AooByte *msg,
-                            AooSize msgsize, const ip_address& addr);
+                            AooSize msgsize, const ip_address& addr, bool binary);
 } // net
 
 inline void endpoint::send(const AooByte *data, AooSize size, const sendfn& fn) const {
@@ -118,7 +143,7 @@ inline void endpoint::send(const AooByte *data, AooSize size, const sendfn& fn) 
     #endif
         AooByte buffer[AOO_MAX_PACKET_SIZE];
         auto result = net::write_relay_message(buffer, sizeof(buffer),
-                                               data, size, address);
+                                               data, size, address, binary);
         if (result > 0) {
             fn(buffer, result, relay, 0);
         } else {
@@ -168,15 +193,22 @@ struct rt_format_deleter {
 
 struct metadata {
     metadata() = default;
+    metadata(AooDataType type, const AooByte *data, AooSize size)
+        : type_(type), data_(data, data + size) {}
     metadata(const AooData* md) {
         if (md) {
             type_ = md->type;
             data_.assign(md->data, md->data + md->size);
         }
     }
+
     AooDataType type() const { return type_; }
     const AooByte *data() const { return data_.data(); }
     AooSize size() const { return data_.size(); }
+
+    bool valid() const {
+        return type_ != kAooDataUnspecified;
+    }
 private:
     AooDataType type_ = kAooDataUnspecified;
     std::vector<AooByte> data_;
@@ -189,7 +221,7 @@ struct metadata_view {
     metadata_view(const aoo::metadata& md)
         : type(md.type()), data(md.data()), size(md.size()) {}
     metadata_view (const AooData *md)
-        : type(md ? md->type : kAooDataUnspecified),
+        : type(md ? md->type : (AooDataType)kAooDataUnspecified),
           data(md ? md->data : nullptr),
           size(md ? md->size : 0) {}
 
@@ -199,16 +231,19 @@ struct metadata_view {
 };
 
 inline osc::OutboundPacketStream& operator<<(osc::OutboundPacketStream& msg, const metadata_view& md) {
-    if (md.size > 0) {
+    if (md.type != kAooDataUnspecified) {
         msg << md.type << osc::Blob(md.data, md.size);
     } else {
-        msg << kAooDataUnspecified << osc::Blob(nullptr, 0);
+        msg << osc::Nil << osc::Nil;
     }
     return msg;
 }
 
-inline AooData osc_read_metadata(osc::ReceivedMessageArgumentIterator& it) {
-    try {
+inline std::optional<AooData> osc_read_metadata(osc::ReceivedMessageArgumentIterator& it) {
+    if (it->IsNil()) {
+        it++; it++;
+        return std::nullopt;
+    } else {
         auto type = (it++)->AsInt32();
         const void *blobdata;
         osc::osc_bundle_element_size_t blobsize;
@@ -216,11 +251,9 @@ inline AooData osc_read_metadata(osc::ReceivedMessageArgumentIterator& it) {
         if (blobsize > 0) {
             return AooData { type, (const AooByte *)blobdata, (AooSize)blobsize };
         } else {
-            return AooData { type, nullptr, 0 };
+            // TODO: are there legitimate use cases for empty metdata?
+            throw osc::MalformedMessageException("metadata with empty content");
         }
-    } catch (const osc::MissingArgumentException&) {
-        LOG_DEBUG("metadata argument not provided");
-        return AooData { kAooDataUnspecified, nullptr, 0 };
     }
 }
 

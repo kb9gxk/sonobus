@@ -6,13 +6,19 @@
 
 #include "m_pd.h"
 
-#include "aoo/aoo.h"
-#include "aoo/aoo_client.hpp"
+#include "aoo.h"
+#include "aoo_client.hpp"
 
+#include "common/log.hpp"
 #include "common/net_utils.hpp"
 #include "common/priority_queue.hpp"
 
 #define classname(x) class_getname(*(t_pd *)x)
+
+// NB: in theory we can support any number of channels.
+// This is mainly meant to handle patches that accidentally use
+// the old argument order where the port number would come first!
+#define AOO_MAX_NUM_CHANNELS 256
 
 #define DEJITTER_TOLERANCE 0.1 // jitter tolerance in percent
 
@@ -20,9 +26,34 @@
 
 #define DEJITTER_DEBUG 0 // debug dejitter algorithm
 
+#define DEJITTER_CHECK 1 // extra checks
+
+// compatibility with older versions of "m_pd.h"
+#if PD_MINOR_VERSION < 52
+typedef enum {
+    PD_CRITICAL = 0,
+    PD_ERROR,
+    PD_NORMAL,
+    PD_DEBUG,
+    PD_VERBOSE
+} t_loglevel;
+#endif
+
+#if PD_MINOR_VERSION >= 54
+# define PD_HAVE_MULTICHANNEL
+#else
+# pragma message("building without multi-channel support; requires Pd 0.54+")
+# define CLASS_MULTICHANNEL 0
+#endif
+
+using t_signal_setmultiout = void (*)(t_signal **, int);
+extern t_signal_setmultiout g_signal_setmultiout;
+
 /*///////////////////////////// OSC time ///////////////////////////////*/
 
 uint64_t get_osctime();
+
+double get_elapsed_ms(AooNtpTime tt);
 
 struct t_dejitter;
 
@@ -46,13 +77,7 @@ public:
 
     virtual int port() const = 0;
 
-    virtual aoo::ip_address::ip_type type() const = 0;
-
     virtual void notify() = 0;
-
-    virtual void lock() = 0;
-
-    virtual void unlock() = 0;
 
     virtual bool resolve(t_symbol *host, int port, aoo::ip_address& addr) const = 0;
 
@@ -72,16 +97,21 @@ int address_to_atoms(const aoo::ip_address& addr, int argc, t_atom *argv);
 
 int endpoint_to_atoms(const aoo::ip_address& addr, AooId id, int argc, t_atom *argv);
 
-void format_makedefault(AooFormatStorage &f, int nchannels);
-
 bool format_parse(t_pd *x, AooFormatStorage &f, int argc, t_atom *argv,
-                  int maxnumchannels);
+                  int defchannels, int defsr, int defblocksize);
 
 int format_to_atoms(const AooFormat &f, int argc, t_atom *argv);
 
 bool atom_to_datatype(const t_atom &a, AooDataType& type, void *x);
 
-void datatype_to_atom(AooDataType type, t_atom& a);
+int datatype_element_size(AooDataType type);
+
+int atoms_to_data(AooDataType type, int argc, const t_atom *argv,
+                  AooByte *data, AooSize size);
+
+int data_to_atoms(const AooData& data, int argc, t_atom *argv);
+
+int stream_message_to_atoms(const AooStreamMessage& data, int argc, t_atom *argv);
 
 /*//////////////////////////// priority queue ////////////////////////////////*/
 

@@ -9,38 +9,23 @@
 
 // debugging
 
+// define this to 1 to force server relay (for testing purposes)
 #define FORCE_RELAY 0
 
 namespace aoo {
 namespace net {
 
-// OSC peer message:
-const int32_t kMessageMaxAddrSize = kAooMsgDomainLen + kAooMsgPeerLen + 16 + kAooMsgDataLen;
-// address pattern string: max 16 bytes
-// typetag string: max. 12 bytes
-// args (including type + blob size): max. 44 bytes
-const int32_t kMessageHeaderSize = kMessageMaxAddrSize + 56;
-
-// binary peer message:
-// args: 28 bytes (max.)
-const int32_t kBinMessageHeaderSize = kAooBinMsgLargeHeaderSize + 28;
-
 //------------------------- peer ------------------------------//
 
-peer::peer(const std::string& group_name, AooId group_id,
-           const std::string& user_name, AooId user_id,
-           const std::string& version, AooFlag flags, const AooData *metadata,
-           ip_address::ip_type address_family, bool use_ipv4_mapped,
-           ip_address_list&& addrlist, AooId local_id,
-           ip_address_list&& user_relay, const ip_address_list& relay_list)
-    : group_name_(group_name), user_name_(user_name),
-      group_id_(group_id), user_id_(user_id), local_id_(local_id), flags_(flags),
-      version_(version), address_family_(address_family), use_ipv4_mapped_(use_ipv4_mapped),
-      metadata_(metadata), addrlist_(std::move(addrlist)),
-      user_relay_(std::move(user_relay)), relay_list_(relay_list)
+peer::peer(peer_args&& args)
+    : group_name_(args.group_name), user_name_(args.user_name),
+      group_id_(args.group_id), user_id_(args.user_id),
+      local_id_(args.local_id), flags_(args.flags), version_(args.version_string),
+      address_family_(args.address_family), binary_(args.binary),
+      use_ipv4_mapped_(args.use_ipv4_mapped), metadata_(args.metadata),
+      addrlist_(std::move(args.address_list)), user_relay_(std::move(args.user_relay)),
+      relay_list_(std::move(args.relay_list))
 {
-    start_time_ = time_tag::now();
-
     LOG_DEBUG("AooClient: create peer " << *this);
     for (auto& addr : addrlist_) {
         LOG_DEBUG("\t" << addr);
@@ -60,11 +45,11 @@ bool peer::match(const ip_address& addr) const {
     }
 }
 
-bool peer::match(const std::string& group) const {
+bool peer::match(std::string_view group) const {
     return group_name_ == group; // immutable!
 }
 
-bool peer::match(const std::string& group, const std::string& user) const {
+bool peer::match(std::string_view group, std::string_view user) const {
     return group_name_ == group && user_name_ == user; // immutable!
 }
 
@@ -90,22 +75,28 @@ ip_address peer::address() const {
     }
 }
 
-void peer::send(Client& client, const sendfn& fn, time_tag now) {
+void peer::send(Client& client, const sendfn& fn, time_tag now,
+                const AooPingSettings& settings) {
     if (connected()) {
-        do_send(client, fn, now);
+        do_send(client, fn, now, settings);
     } else if (!timeout_) {
         // try to establish UDP connection with peer
-        auto elapsed_time = time_tag::duration(start_time_, now);
-        auto delta = elapsed_time - last_pingtime_;
-        if (elapsed_time > client.query_timeout()){
+
+        if (handshake_deadline_.is_empty()) {
+            // initialize timer
+            auto timeout = settings.probeInterval * settings.probeCount;
+            handshake_deadline_ = now + aoo::time_tag::from_seconds(timeout);
+            next_handshake_ = now;
+        }
+
+        if (now >= handshake_deadline_) {
             // time out -> try to relay
             if (!relay_list_.empty() && !need_relay()) {
-                start_time_ = now;
-                last_pingtime_ = 0;
-                // for now we just try with the first relay address.
+                // for now we just try the first relay address.
                 // LATER try all of them.
                 relay_address_ = relay_list_.front();
                 flags_ |= kAooPeerNeedRelay;
+                handshake_deadline_.clear(); // reset timer
                 LOG_WARNING("AooClient: UDP handshake with " << *this
                             << " timed out, try to relay over " << relay_address_);
                 return;
@@ -113,39 +104,36 @@ void peer::send(Client& client, const sendfn& fn, time_tag now) {
 
             // couldn't establish connection!
             const char *what = need_relay() ? "relay" : "peer-to-peer";
+            auto timeout = settings.probeInterval * settings.probeCount;
             LOG_ERROR("AooClient: couldn't establish UDP " << what
                       << " connection to " << *this << "; timed out after "
-                      << client.query_timeout() << " seconds");
+                      << timeout << " seconds");
 
-            std::stringstream ss;
-            ss << "couldn't establish connection with peer " << *this;
-
-            // TODO: do we really need to send the error event?
-            auto e1 = std::make_unique<error_event>(0, ss.str());
-            client.send_event(std::move(e1));
-
-            auto e2 = std::make_unique<peer_event>(kAooEventPeerTimeout, *this);
-            client.send_event(std::move(e2));
+            auto e = std::make_unique<peer_event>(kAooEventPeerTimeout, *this);
+            client.send_event(std::move(e));
 
             timeout_ = true;
 
             return;
         }
-        // send handshakes in fast succession to all addresses
-        // until we get a reply from one of them (see handle_message())
-        if (delta >= client.query_interval()){
+
+        // send handshake pings to all addresses until we get a reply
+        // from one of them; see handle_message().
+        if (now >= next_handshake_) {
+            next_handshake_ += aoo::time_tag::from_seconds(settings.probeInterval);
+
             char buf[64];
             osc::OutboundPacketStream msg(buf, sizeof(buf));
-            // /aoo/peer/ping <group> <user> <tt>
-            // NB: we send *our* user ID, see above. The empty timetag
-            // distinguishes a handshake ping from a regular ping!
+            // /aoo/peer/ping <group> <user> nil
+            // NB: we send *our* user ID, see above. The protocol asks as to send 'nil'
+            // instead of a timetag to dinstinguish a handshake ping from a regular ping!
             //
             // With the group and user ID, peers can identify us even if
             // we're behind a symmetric NAT. This trick doesn't work
             // if both parties are behind a symmetrict NAT; in that case,
             // UDP hole punching simply doesn't work.
             msg << osc::BeginMessage(kAooMsgPeerPing)
-                << group_id_ << local_id_ << osc::TimeTag(0)
+                << group_id_ << local_id_ << osc::Nil
                 << osc::EndMessage;
 
             for (auto& addr : addrlist_) {
@@ -171,18 +159,16 @@ void peer::send(Client& client, const sendfn& fn, time_tag now) {
                 }
             }
 
-            last_pingtime_ = elapsed_time;
-
             LOG_DEBUG("AooClient: send handshake ping to " << *this);
         }
     }
 }
 
-void peer::do_send(Client& client, const sendfn& fn, time_tag now) {
-    auto elapsed_time = time_tag::duration(start_time_, now);
-    auto delta = elapsed_time - last_pingtime_;
-    // 1) send regular ping
-    if (delta >= client.ping_interval()) {
+void peer::do_send(Client& client, const sendfn& fn, time_tag now,
+                   const AooPingSettings& settings) {
+    // send regular ping or probe ping
+    auto result = ping_timer_.update(now, settings, true);
+    if (result.ping) {
         // /aoo/peer/ping
         // NB: we send *our* user ID, so that the receiver can easily match the message.
         // We do not have to specifiy the peer's user ID because the group Id is already
@@ -195,62 +181,81 @@ void peer::do_send(Client& client, const sendfn& fn, time_tag now) {
 
         send(msg, fn);
 
-        last_pingtime_ = elapsed_time;
-
-        LOG_DEBUG("AooClient: send ping to " << *this << " (" << now << ")");
+        if (result.state == ping_state::probe) {
+            LOG_DEBUG("AooClient: send probe ping to " << *this << " (" << now << ")");
+        } else {
+            LOG_DEBUG("AooClient: send ping to " << *this << " (" << now << ")");
+        }
     }
+    if (active_ && result.state == ping_state::inactive) {
+        active_ = false; // -> inactive
+        // send event
+        auto e = std::make_unique<peer_state_event>(*this, true);
+        client.send_event(std::move(e));
+
+        LOG_INFO("AooClient: " << *this << " became inactive");
+    } else if (!active_ && result.state != ping_state::inactive) {
+        active_ = true; // -> active
+        // send event
+        auto e = std::make_unique<peer_state_event>(*this, false);
+        client.send_event(std::move(e));
+
+        LOG_INFO("AooClient: " << *this << " became active again");
+    }
+
     // 2) reply to /ping message
     // NB: we send *our* user ID, see above.
     if (got_ping_.exchange(false, std::memory_order_acquire)) {
-        // The empty timetag distinguishes a handshake
-        // pong from a regular pong.
+        // The empty timetag distinguishes a handshake pong from a regular pong.
         auto tt1 = ping_tt1_;
+        auto tt2 = ping_tt2_;
         if (!tt1.is_empty()) {
             // regular pong
             char buf[64];
             osc::OutboundPacketStream msg(buf, sizeof(buf));
             msg << osc::BeginMessage(kAooMsgPeerPong)
                 << group_id_ << local_id_
-                << osc::TimeTag(tt1) << osc::TimeTag(now)
+                << osc::TimeTag(tt1) << osc::TimeTag(tt2) << osc::TimeTag(now)
                 << osc::EndMessage;
 
             send(msg, fn);
 
-            LOG_DEBUG("AooClient: send ping reply to " << *this
-                      << " (" << time_tag(tt1) << " " << now << ")");
+            LOG_DEBUG("AooClient: send pong to " << *this << " (tt1: " << tt1
+                      << ", tt2: " << tt2 << ", tt3: " << now << ")");
         } else {
             // handshake pong
+            // NB: The protocol asks as to send 'nil' instead of timetags.
             char buf[64];
             osc::OutboundPacketStream msg(buf, sizeof(buf));
             msg << osc::BeginMessage(kAooMsgPeerPong)
                 << group_id_ << local_id_
-                << osc::TimeTag(0) << osc::TimeTag(0)
+                << osc::Nil << osc::Nil << osc::Nil
                 << osc::EndMessage;
 
             send(msg, fn);
 
-            LOG_DEBUG("AooClient: send handshake ping reply to " << *this);
+            LOG_DEBUG("AooClient: send handshake pong to " << *this);
         }
     }
     // 3) send outgoing acks
     // LATER send them in batches!
     message_ack ack;
-    while (send_acks_.try_pop(ack)) {
+    while (send_acks_.pop(ack)) {
         send_ack(ack, fn);
     }
     // 4) handle incoming acks
-    while (received_acks_.try_pop(ack)) {
-        if (auto msg = send_buffer_.find(ack.seq)) {
-            if (ack.frame >= 0) {
-                msg->ack_frame(ack.frame);
+    while (received_acks_.pop(ack)) {
+        if (auto msg = send_buffer_.find(ack.sequence)) {
+            if (ack.frame_index >= 0) {
+                msg->ack_frame(ack.frame_index);
             } else {
                 // negative -> all frames
                 msg->ack_all();
             }
         } else {
         #if AOO_DEBUG_CLIENT_MESSAGE
-            LOG_DEBUG("AooClient: got outdated ack (seq: " << ack.seq
-                      << ", frame: " << ack.frame << ") from " << *this);
+            LOG_DEBUG("AooClient: got outdated ack (seq: " << ack.sequence
+                      << ", frame: " << ack.frame_index << ") from " << *this);
         #endif
         }
     }
@@ -271,20 +276,20 @@ void peer::do_send(Client& client, const sendfn& fn, time_tag now) {
     if (!send_buffer_.empty()) {
         bool binary = client.binary();
         for (auto& msg : send_buffer_) {
-            if (msg.need_resend(elapsed_time)) {
+            if (msg.need_resend(now)) {
                 message_packet p;
                 p.type = msg.data_.type();
                 p.data = nullptr;
                 p.size = 0;
                 p.tt = msg.tt_;
                 p.sequence = msg.sequence_;
-                p.totalsize = msg.data_.size();
-                p.nframes = msg.nframes_;
-                p.frame = 0;
+                p.total_size = msg.data_.size();
+                p.num_frames = msg.num_frames_;
+                p.frame_index = 0;
                 p.reliable = true;
-                for (int i = 0; i < p.nframes; ++i) {
+                for (int i = 0; i < p.num_frames; ++i) {
                     if (!msg.has_frame(i)) {
-                        p.frame = i;
+                        p.frame_index = i;
                         msg.get_frame(i, p.data, p.size);
                     #if AOO_DEBUG_CLIENT_MESSAGE
                         LOG_DEBUG("AooClient: resend message (seq: " << msg.sequence_
@@ -324,20 +329,20 @@ void peer::do_send(Client& client, const sendfn& fn, time_tag now) {
 // prevent excessive resending in low-latency networks
 #define AOO_CLIENT_MIN_RESEND_TIME 0.02
 
-void peer::send_message(const message& m, const sendfn& fn, bool binary) {
+void peer::send_message(const message& m, const sendfn& fn, int32_t packet_size, bool binary) {
     // LATER make packet size settable at runtime, see AooSource::send_data()
-    const int32_t maxsize = AOO_PACKET_SIZE - (binary ? kBinMessageHeaderSize : kMessageHeaderSize);
+    const int32_t maxsize = packet_size - (binary ? kBinMessageHeaderSize : kMessageHeaderSize);
     auto d = std::div((int32_t)m.data_.size(), maxsize);
 
     message_packet p;
     p.type = m.data_.type();
-    p.data = nullptr;
     p.size = 0;
+    p.data = nullptr;
     p.tt = m.tt_;
     // p.sequence =
-    p.totalsize = m.data_.size();
-    p.nframes = d.quot + (d.rem != 0);
-    p.frame = 0;
+    p.total_size = m.data_.size();
+    p.num_frames = d.quot + (d.rem != 0);
+    p.frame_index = 0;
     p.reliable = m.reliable_;
 
     if (p.reliable) {
@@ -346,18 +351,18 @@ void peer::send_message(const message& m, const sendfn& fn, bool binary) {
         // wait twice the average RTT before resending
         auto rtt = average_rtt_.load(std::memory_order_relaxed);
         auto interval = std::max<float>(rtt * 2, AOO_CLIENT_MIN_RESEND_TIME);
-        sent_message sm(m.data_, m.tt_, p.sequence, p.nframes, framesize, interval);
+        sent_message sm(m.data_, m.tt_, p.sequence, p.num_frames, framesize, interval);
         send_buffer_.push(std::move(sm));
     } else {
         // NB: use different sequences for reliable and unreliable messages!
         p.sequence = next_sequence_unreliable_++;
     }
 
-    if (p.nframes > 1) {
+    if (p.num_frames > 1) {
         // multi-frame message
-        for (int32_t i = 0; i < p.nframes; ++i) {
-            p.frame = i;
-            if (i == (p.nframes - 1)) {
+        for (int32_t i = 0; i < p.num_frames; ++i) {
+            p.frame_index = i;
+            if (i == (p.num_frames - 1)) {
                 p.size = d.rem;
                 p.data = m.data_.data() + m.data_.size() - d.rem;
             } else {
@@ -389,8 +394,20 @@ void peer::send_packet_osc(const message_packet& p, const sendfn& fn) const {
     // NB: we send *our* ID (= the sender)
     msg << osc::BeginMessage(kAooMsgPeerMessage)
         << group_id() << local_id() << (int32_t)flags
-        << p.sequence << p.totalsize << p.nframes << p.frame
-        << osc::TimeTag(p.tt) << p.type << osc::Blob(p.data, p.size)
+        << p.sequence << p.total_size;
+    // frames
+    if (p.num_frames > 1) {
+        msg << p.num_frames << p.frame_index;
+    } else {
+        msg << osc::Nil << osc::Nil;
+    }
+    // timetag
+    if (!p.tt.is_empty()) {
+        msg << osc::TimeTag(p.tt);
+    } else {
+        msg << osc::Nil;
+    }
+    msg << p.type << osc::Blob(p.data, p.size)
         << osc::EndMessage;
     send(msg, fn);
 }
@@ -398,24 +415,30 @@ void peer::send_packet_osc(const message_packet& p, const sendfn& fn) const {
 void peer::send_packet_bin(const message_packet& p, const sendfn& fn) const {
     AooByte buf[AOO_MAX_PACKET_SIZE];
 
-    AooFlag flags = (p.reliable * kAooBinMsgMessageReliable) |
-            ((p.nframes > 1) * kAooBinMsgMessageFrames) |
-            ((!p.tt.is_empty()) * kAooBinMsgMessageTimestamp);
+    AooFlag flags = 0;
+    if (p.reliable) {
+        flags |= kAooBinMsgMessageReliable;
+    }
+    if (p.num_frames > 1) {
+        flags |= kAooBinMsgMessageFrames;
+    }
+    if (!p.tt.is_empty()) {
+        flags |= kAooBinMsgMessageTimestamp;
+    }
 
     // NB: we send *our* user ID
-    auto offset = aoo::binmsg_write_header(buf, sizeof(buf), kAooMsgTypePeer,
-                                           kAooBinMsgCmdMessage, group_id(), local_id());
+    auto offset = aoo::binmsg_write_header(
+        buf, sizeof(buf), kAooMsgTypePeer, kAooBinMsgCmdMessage, group_id(), local_id());
     auto ptr = buf + offset;
     auto end = buf + sizeof(buf);
     aoo::write_bytes<int32_t>(p.sequence, ptr);
     aoo::write_bytes<uint16_t>(flags, ptr);
     aoo::write_bytes<uint16_t>(p.size, ptr);
     if (flags & kAooBinMsgMessageFrames) {
-        aoo::write_bytes<int32_t>(p.totalsize, ptr);
-        aoo::write_bytes<int32_t>(p.nframes, ptr);
-        aoo::write_bytes<int32_t>(p.frame, ptr);
+        aoo::write_bytes<int32_t>(p.total_size, ptr);
+        aoo::write_bytes<int32_t>(p.num_frames, ptr);
+        aoo::write_bytes<int32_t>(p.frame_index, ptr);
     }
-    // only send type and timetag with first frame
     if (flags & kAooBinMsgMessageTimestamp) {
         aoo::write_bytes<uint64_t>(p.tt, ptr);
     }
@@ -434,17 +457,17 @@ void peer::send_packet_bin(const message_packet& p, const sendfn& fn) const {
 // header, count (int32), seq1 (int32), frame1 (int32), seq2 (int32), frame2 (int32), etc. // frame < 0 -> all
 void peer::send_ack(const message_ack &ack, const sendfn& fn) {
 #if AOO_DEBUG_CLIENT_MESSAGE
-    LOG_DEBUG("AooClient: send ack (seq: " << ack.seq << ", frame: " << ack.frame
+    LOG_DEBUG("AooClient: send ack (seq: " << ack.sequence << ", frame: " << ack.frame_index
               << ") to " << *this);
 #endif
-    if (binary_.load(std::memory_order_relaxed)) {
+    if (binary_ack_.load(std::memory_order_relaxed)) {
         AooByte buf[64];
         auto onset = binmsg_write_header(buf, sizeof(buf), kAooMsgTypePeer,
                                          kAooBinMsgCmdAck, group_id_, local_id_);
         auto ptr = buf + onset;
         aoo::write_bytes<int32_t>(1, ptr);
-        aoo::write_bytes<int32_t>(ack.seq, ptr);
-        aoo::write_bytes<int32_t>(ack.frame, ptr);
+        aoo::write_bytes<int32_t>(ack.sequence, ptr);
+        aoo::write_bytes<int32_t>(ack.frame_index, ptr);
 
         send(buf, ptr - buf, fn);
     } else {
@@ -452,25 +475,25 @@ void peer::send_ack(const message_ack &ack, const sendfn& fn) {
         osc::OutboundPacketStream msg(buf, sizeof(buf));
         msg << osc::BeginMessage(kAooMsgPeerAck)
             << group_id_ << local_id_
-            << ack.seq << ack.frame
+            << ack.sequence << ack.frame_index
             << osc::EndMessage;
 
         send(msg, fn);
     }
 }
 
-void peer::handle_osc_message(Client& client, const char *pattern,
+void peer::handle_osc_message(Client& client, std::string_view pattern,
                               osc::ReceivedMessageArgumentIterator it,
                               int remaining, const ip_address& addr) {
     LOG_DEBUG("AooClient: got OSC message " << pattern << " from " << *this);
 
-    if (!strcmp(pattern, kAooMsgPing)) {
+    if (pattern == kAooMsgPing) {
         handle_ping(client, it, addr);
-    } else if (!strcmp(pattern, kAooMsgPong)) {
+    } else if (pattern == kAooMsgPong) {
         handle_pong(client, it, addr);
-    } else if (!strcmp(pattern, kAooMsgMessage)) {
+    } else if (pattern == kAooMsgMessage) {
         handle_client_message(client, it);
-    } else if (!strcmp(pattern, kAooMsgAck)) {
+    } else if (pattern == kAooMsgAck) {
         handle_ack(client, it, remaining);
     } else {
         LOG_WARNING("AooClient: got unknown message "
@@ -520,8 +543,8 @@ void peer::handle_first_ping(Client &client, const aoo::ip_address& addr) {
     auto e = std::make_unique<peer_event>(kAooEventPeerJoin, *this);
     client.send_event(std::move(e));
 
-    LOG_VERBOSE("AooClient: successfully established connection with "
-                << *this << " " << addr << (need_relay() ? " (relayed)" : ""));
+    LOG_INFO("AooClient: successfully established connection with "
+             << *this << " " << addr << (need_relay() ? " (relayed)" : ""));
 }
 
 void peer::handle_ping(Client& client, osc::ReceivedMessageArgumentIterator it,
@@ -530,17 +553,21 @@ void peer::handle_ping(Client& client, osc::ReceivedMessageArgumentIterator it,
         handle_first_ping(client, addr);
     }
 
-    time_tag tt1 = (it++)->AsTimeTag();
+    ping_timer_.pong();
+
+    // NB: 'nil' indicates a handshake ping; internally we use an empty timetag as sentinel.
+    time_tag tt1 = !it->IsNil() ? it->AsTimeTag() : 0;
     // reply to both handshake and regular pings!!!
     // otherwise, the handshake might fail on the other side.
     // This is not 100% threadsafe, but regular pings will never
     // be sent fast enough to actually cause a race condition.
     // TODO: maybe use a queue instead?
     ping_tt1_ = tt1;
+    ping_tt2_ = time_tag::now(); // local receive time
     got_ping_.store(true, std::memory_order_release);
     if (!tt1.is_empty()) {
         LOG_DEBUG("AooClient: got ping from " << *this
-                  << "(tt1: " << tt1 << ", tt2: " << time_tag::now() << ")");
+                  << " (tt1: " << tt1 << ", tt2: " << ping_tt2_ << ")");
     } else {
         // handshake ping
         LOG_DEBUG("AooClient: got handshake ping from " << *this);
@@ -553,13 +580,20 @@ void peer::handle_pong(Client& client, osc::ReceivedMessageArgumentIterator it,
         handle_first_ping(client, addr);
     }
 
-    time_tag tt1 = (it++)->AsTimeTag();
-    if (!tt1.is_empty()) {
-        // regular pong
-        time_tag tt2 = (it++)->AsTimeTag();
-        time_tag tt3 = time_tag::now();
+    ping_timer_.pong();
 
-        auto rtt = time_tag::duration(tt1, tt3);
+    // 'nil' indicates a handshake pong
+    if (it->IsNil()) {
+        // handshake pong
+        LOG_DEBUG("AooClient: got handshake pong from " << *this);
+    } else {
+        // regular pong
+        time_tag tt1 = (it++)->AsTimeTag(); // local send time
+        time_tag tt2 = (it++)->AsTimeTag(); // remote receive time
+        time_tag tt3 = (it++)->AsTimeTag(); // remote send time
+        time_tag tt4 = time_tag::now(); // local receive time
+
+        auto rtt = time_tag::duration(tt1, tt4) - time_tag::duration(tt2, tt3);
     #if 1
         // NB: we are the only thread writing to average_rtt_, so we don't need a CAS loop!
         auto avg = average_rtt_.load(std::memory_order_relaxed);
@@ -577,15 +611,12 @@ void peer::handle_pong(Client& client, osc::ReceivedMessageArgumentIterator it,
     #endif
 
         // only send event for regular pong!
-        auto e = std::make_unique<peer_ping_event>(*this, tt1, tt2, tt3);
+        auto e = std::make_unique<peer_ping_event>(*this, tt1, tt2, tt3, tt4);
         client.send_event(std::move(e));
 
-        LOG_DEBUG("AooClient: got pong from " << *this
-                  << "(tt1: " << tt1 << ", tt2: " << tt2 << ", tt3: " << tt3
+        LOG_DEBUG("AooClient: got pong from " << *this << " (tt1: " << tt1
+                  << ", tt2: " << tt2 << ", tt3: " << tt3 << ", tt4: " << tt4
                   << ", rtt: " << rtt << ", average: " << average_rtt_.load() << ")");
-    } else {
-        // handshake pong
-        LOG_DEBUG("AooClient: got handshake pong from " << *this);
     }
 }
 
@@ -594,17 +625,32 @@ void peer::handle_client_message(Client &client, osc::ReceivedMessageArgumentIte
 
     message_packet p;
     p.sequence = (it++)->AsInt32();
-    p.totalsize = (it++)->AsInt32();
-    p.nframes = (it++)->AsInt32();
-    p.frame = (it++)->AsInt32();
-    p.tt = (time_tag)(it++)->AsTimeTag();
+    p.total_size = (it++)->AsInt32();
+    // frames
+    if (!it->IsNil()) {
+        p.num_frames = (it++)->AsInt32();
+        p.frame_index = (it++)->AsInt32();
+    } else {
+        p.num_frames = 1; it++;
+        p.frame_index = 0; it++;
+    }
+    if (!it->IsNil()) {
+        p.tt = (it++)->AsTimeTag();
+    } else {
+        p.tt = 0; it++;
+    }
     auto data = osc_read_metadata(it);
-    p.type = data.type;
-    p.data = data.data;
-    p.size = data.size;
+    if (data) {
+        p.type = data->type;
+        p.data = data->data;
+        p.size = data->size;
+    } else {
+        throw osc::MalformedMessageException("missing data");
+    }
 
     // tell the send thread that it should answer with OSC messages
-    binary_.store(false, std::memory_order_relaxed);
+    // TODO: should we just use binary_ instead?
+    binary_ack_.store(false, std::memory_order_relaxed);
 
     do_handle_client_message(client, p, flags);
 }
@@ -627,14 +673,14 @@ void peer::handle_client_message(Client &client, const AooByte *data, AooSize si
         if (remaining < 12) {
             goto bad_message;
         }
-        p.totalsize = aoo::read_bytes<int32_t>(ptr);
-        p.nframes = aoo::read_bytes<int32_t>(ptr);
-        p.frame = aoo::read_bytes<int32_t>(ptr);
+        p.total_size = aoo::read_bytes<int32_t>(ptr);
+        p.num_frames = aoo::read_bytes<int32_t>(ptr);
+        p.frame_index = aoo::read_bytes<int32_t>(ptr);
         remaining -= 12;
     } else {
-        p.totalsize = p.size;
-        p.nframes = 1;
-        p.frame = 0;
+        p.total_size = p.size;
+        p.num_frames = 1;
+        p.frame_index = 0;
     }
     if (flags & kAooBinMsgMessageTimestamp) {
         if (remaining < 8) {
@@ -654,7 +700,8 @@ void peer::handle_client_message(Client &client, const AooByte *data, AooSize si
     p.data = ptr;
 
     // tell the send thread that it should answer with binary messages
-    binary_.store(true, std::memory_order_relaxed);
+    // TODO: should we just use binary_ instead?
+    binary_ack_.store(true, std::memory_order_relaxed);
 
     do_handle_client_message(client, p, flags);
 
@@ -673,10 +720,10 @@ void peer::do_handle_client_message(Client& client, const message_packet& p, Aoo
             // outdated message
         #if AOO_DEBUG_CLIENT_MESSAGE
             LOG_DEBUG("AooClient: ignore outdated message (seq: "
-                      << p.sequence << ", frame: " << p.frame << ") from " << *this);
+                      << p.sequence << ", frame: " << p.frame_index  << ") from " << *this);
         #endif
             // don't forget to acknowledge!
-            send_acks_.push(p.sequence, p.frame);
+            send_acks_.emplace(p.sequence, p.frame_index);
             return;
         }
         if (p.sequence > last_pushed) {
@@ -696,35 +743,27 @@ void peer::do_handle_client_message(Client& client, const message_packet& p, Aoo
             // add new message
         #if AOO_DEBUG_CLIENT_MESSAGE
             LOG_DEBUG("AooClient: add new message (seq: " << p.sequence
-                      << ", frame: " << p.frame << ") from " << *this);
+                      << ", frame: " << p.frame_index << ") from " << *this);
         #endif
             auto& msg = receive_buffer_.push(received_message(p.sequence));
-            msg.init(p.nframes, p.totalsize);
-            msg.add_frame(p.frame, p.data, p.size);
-            if (p.frame == 0) {
-                assert(p.type != kAooDataUnspecified);
-                msg.set_info(p.type, p.tt);
-            }
+            msg.init(p.type, p.tt, p.num_frames, p.total_size);
+            msg.add_frame(p.frame_index, p.data, p.size);
         } else {
             // add to existing message
         #if AOO_DEBUG_CLIENT_MESSAGE
             LOG_DEBUG("AooClient: add to existing message (seq: " << p.sequence
-                      << ", frame: " << p.frame << ") from " << *this);
+                      << ", frame: " << p.frame_index << ") from " << *this);
         #endif
             if (auto msg = receive_buffer_.find(p.sequence)) {
-                if (!msg->initialized()) {
-                    msg->init(p.nframes, p.totalsize);
+                if (msg->placeholder()) {
+                    msg->init(p.type, p.tt, p.num_frames, p.total_size);
                 }
-                if (!msg->has_frame(p.frame)) {
-                    msg->add_frame(p.frame, p.data, p.size);
-                    if (p.frame == 0) {
-                        assert(p.type != kAooDataUnspecified);
-                        msg->set_info(p.type, p.tt);
-                    }
+                if (!msg->has_frame(p.frame_index)) {
+                    msg->add_frame(p.frame_index, p.data, p.size);
                 } else {
                 #if AOO_DEBUG_CLIENT_MESSAGE
                     LOG_DEBUG("AooClient: ignore duplicate message (seq: " << p.sequence
-                              << ", frame: " << p.frame << ") from " << *this);
+                              << ", frame: " << p.frame_index << ") from " << *this);
                 #endif
                 }
             } else {
@@ -736,7 +775,7 @@ void peer::do_handle_client_message(Client& client, const message_packet& p, Aoo
         while (!receive_buffer_.empty()) {
             auto& msg = receive_buffer_.front();
             if (msg.complete()) {
-                AooData md { msg.type(), msg.data(), (AooSize)msg.size() };
+                AooData md { msg.type_, msg.data_, (AooSize)msg.size_ };
                 auto e = std::make_unique<peer_message_event>(
                             group_id(), user_id(), msg.tt_, md);
                 client.send_event(std::move(e));
@@ -747,25 +786,22 @@ void peer::do_handle_client_message(Client& client, const message_packet& p, Aoo
             }
         }
         // schedule acknowledgement
-        send_acks_.push(p.sequence, p.frame);
+        send_acks_.emplace(p.sequence, p.frame_index);
     } else {
         // *** unreliable message ***
-        if (p.nframes > 1) {
+        if (p.num_frames > 1) {
             // try to reassemble message
             if (current_msg_.sequence_ != p.sequence) {
             #if AOO_DEBUG_CLIENT_MESSAGE
                 LOG_DEBUG("AooClient: new multi-frame message from " << *this);
             #endif
                 // start new message (any incomplete previous message is discarded!)
-                current_msg_.init(p.sequence, p.nframes, p.totalsize);
+                current_msg_ = received_message(p.sequence);
+                current_msg_.init(p.type, p.tt, p.num_frames, p.total_size);
             }
-            current_msg_.add_frame(p.frame, p.data, p.size);
-            if (p.frame == 0) {
-                assert(p.type != kAooDataUnspecified);
-                current_msg_.set_info(p.type, p.tt);
-            }
+            current_msg_.add_frame(p.frame_index, p.data, p.size);
             if (current_msg_.complete()) {
-                AooData d { current_msg_.type(), current_msg_.data(), (AooSize)current_msg_.size() };
+                AooData d { current_msg_.type_, current_msg_.data_, (AooSize)current_msg_.size_ };
                 auto e = std::make_unique<peer_message_event>(
                             group_id(), user_id(), p.tt, d);
                 client.send_event(std::move(e));
@@ -788,7 +824,7 @@ void peer::handle_ack(Client &client, osc::ReceivedMessageArgumentIterator it, i
         LOG_DEBUG("AooClient: got ack (seq: " << seq
                   << ", frame: " << frame << ") from " << *this);
     #endif
-        received_acks_.push(seq, frame);
+        received_acks_.emplace(seq, frame);
     }
 }
 
@@ -804,7 +840,7 @@ void peer::handle_ack(Client &client, const AooByte *data, AooSize size) {
                 LOG_DEBUG("AooClient: got ack (seq: " << seq
                           << ", frame: " << frame << ") from " << *this);
             #endif
-                received_acks_.push(seq, frame);
+                received_acks_.emplace(seq, frame);
             }
             return; // done
         }
@@ -822,10 +858,21 @@ void peer::send(const AooByte *data, AooSize size,
             LOG_DEBUG("AooClient: relay message " << (const char *)data << " to peer " << *this);
         }
     #endif
-        AooByte buf[AOO_MAX_PACKET_SIZE];
-        auto result = write_relay_message(buf, sizeof(buf), data, size, addr);
+        if (binary_) {
+            AooByte buf[AOO_MAX_PACKET_SIZE];
+            auto result = write_relay_message(buf, sizeof(buf), data, size, addr, binary_);
 
-        fn(buf, result, relay_address_);
+            fn(buf, result, relay_address_);
+        } else {
+            // don't prepend size for UDP message!
+            char buf[AOO_MAX_PACKET_SIZE];
+            osc::OutboundPacketStream out(buf, sizeof(buf));
+            out << osc::BeginMessage(kAooMsgDomain kAooMsgRelay)
+                << addr << osc::Blob(data, size)
+                << osc::EndMessage;
+
+            fn((const AooByte*)out.Data(), out.Size(), relay_address_);
+        }
     } else {
         fn(data, size, addr);
     }

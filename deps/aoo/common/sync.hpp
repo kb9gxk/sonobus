@@ -6,6 +6,7 @@
 
 #include <inttypes.h>
 #include <atomic>
+#include <thread>
 #include <utility>
 
 #ifndef _WIN32
@@ -24,33 +25,22 @@
   #include <semaphore.h>
 #endif
 
+// TODO: FreeRTOS Semaphore
 #if defined(_WIN32) || defined(__APPLE__) || defined(HAVE_POSIX_SEMAPHORE)
   #define HAVE_SEMAPHORE
 #endif
 
 // for spinlock
-// Intel
-#if defined(__i386__) || defined(_M_IX86) || \
-    defined(__x86_64__) || defined(_M_X64)
-  #define HAVE_PAUSE
-  #include <immintrin.h>
-// ARM
-#elif (defined(__ARM_ARCH_6K__) || \
-       defined(__ARM_ARCH_6Z__) || \
-       defined(__ARM_ARCH_6ZK__) || \
-       defined(__ARM_ARCH_6T2__) || \
-       defined(__ARM_ARCH_7__) || \
-       defined(__ARM_ARCH_7A__) || \
-       defined(__ARM_ARCH_7R__) || \
-       defined(__ARM_ARCH_7M__) || \
-       defined(__ARM_ARCH_7S__) || \
-       defined(__ARM_ARCH_8A__) || \
-       defined(__aarch64__))
-// mnemonic 'yield' is supported from ARMv6k onwards
-  #define HAVE_YIELD
-#else
-// fallback
-  #include <thread>
+#if defined(_MSC_VER)
+# ifndef WIN32_LEAN_AND_MEAN
+#  define WIN32_LEAN_AND_MEAN
+# endif
+# ifndef NOMINMAX
+#  define NOMINMAX
+# endif
+# include <Windows.h>
+#elif defined(__SSE2__)
+# include <immintrin.h>
 #endif
 
 // for shared_lock
@@ -60,24 +50,25 @@
 namespace aoo {
 namespace sync {
 
-inline void pause_cpu(){
-#if defined(HAVE_PAUSE)
+inline void pause_cpu() {
+#if defined(_MSC_VER)
+    YieldProcessor();
+#elif defined(__SSE2__)
     _mm_pause();
-#elif defined(HAVE_YIELD)
+#elif defined(__aarch64__)
+    __asm__ __volatile__("isb");
+#elif defined(__arm__)
     __asm__ __volatile__("yield");
-#else // fallback
-  #warning "architecture does not support yield/pause instruction"
-  #if 0
-    std::this_thread::sleep_for(std::chrono::microseconds(0));
-  #else
-    std::this_thread::yield();
-  #endif
+#elif defined(ESP_PLATFORM)
+    // TODO
+#else
+# warning "Cannot pause CPU, falling back to busy-waiting."
 #endif
 }
 
 //-------------- thread priority ------------------//
 
-void lower_thread_priority();
+void set_low_realtime_priority();
 
 //----------------- relaxed atomics ---------------//
 
@@ -134,7 +125,12 @@ public:
         return value_.exchange(value, std::memory_order_relaxed);
     }
 private:
-#if __cplusplus >= 201703L
+#if __cplusplus >= 201703L && !defined(ESP_PLATFORM)
+    // The Xtensa does not guarantee lockfree atomics for any data type.
+    // E.g. __GCC_ATOMIC_INT_LOCK_FREE evaluates to 1 (= sometimes lockfree).
+    // In practice all types up to 4 bytes should be lockfree on an ESP32 chip.
+    // Ideally we should do a runtime check with std::atomic::is_lock_free(),
+    // but that wouldn't work for cross-compiling...
     static_assert(std::atomic<T>::is_always_lock_free,
                   "std::atomic<T> is not lockfree!");
 #endif
@@ -176,6 +172,7 @@ class relaxed_atomic<T, typename std::enable_if<
 
 //----------------- spinlock ----------------------//
 
+// TODO: temporarily disable interrupts on ESP?
 class spinlock {
 public:
     spinlock() = default;
@@ -207,6 +204,7 @@ protected:
 
 //------------- shared spin lock -----------------//
 
+// TODO: temporarily disable interrupts on ESP?
 class shared_spinlock {
 public:
     shared_spinlock() = default;
@@ -321,6 +319,16 @@ private:
 #endif
 };
 
+class recursive_mutex : public mutex {
+public:
+    void lock();
+    bool try_lock();
+    void unlock();
+private:
+    std::atomic<std::thread::id> owner_{std::thread::id{}};
+    int count_ = 0;
+};
+
 //------------------------ shared_mutex -------------------------//
 
 #if defined(_WIN32) || defined(AOO_HAVE_PTHREAD_RWLOCK)
@@ -348,10 +356,30 @@ private:
 };
 
 #else
+
 // fallback
 using shared_mutex = std::shared_mutex;
 
 #endif // _WIN32 || AOO_HAVE_PTHREAD_RWLOCK
+
+// WARNING: lock() and try_lock() may only be called recursively
+// if the topmost lock is exclusive! Use with care!!!
+class shared_recursive_mutex : public shared_mutex {
+public:
+    // exclusive
+    void lock();
+    bool try_lock();
+    void unlock();
+    // shared
+    void lock_shared();
+    bool try_lock_shared();
+    void unlock_shared();
+private:
+    std::atomic<std::thread::id> owner_{std::thread::id{}};
+    int count_ = 0;
+};
+
+//----------------------- lock guards ------------------------------//
 
 typedef std::try_to_lock_t try_to_lock_t;
 typedef std::defer_lock_t defer_lock_t;
@@ -405,6 +433,8 @@ class native_semaphore {
     native_semaphore& operator=(const native_semaphore&) = delete;
     void post();
     void wait();
+    bool try_wait();
+    bool wait_for(double seconds);
  private:
 #if defined(_WIN32)
     void *sem_;
@@ -429,6 +459,8 @@ class semaphore {
     semaphore& operator=(const semaphore&) = delete;
     void post();
     void wait();
+    bool try_wait();
+    bool wait_for(double seconds);
  private:
 #ifdef HAVE_SEMAPHORE
     detail::native_semaphore sem_;
@@ -451,6 +483,8 @@ class event {
     event& operator=(const event&) = delete;
     void set();
     void wait();
+    bool try_wait();
+    bool wait_for(double seconds);
  private:
 #ifdef HAVE_SEMAPHORE
     detail::native_semaphore sem_;

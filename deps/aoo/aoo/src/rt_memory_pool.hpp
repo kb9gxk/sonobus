@@ -1,5 +1,8 @@
 #pragma once
 
+#include "common/bit_utils.hpp"
+#include "common/log.hpp"
+#include "common/tagged_integer.hpp"
 #include "common/utils.hpp"
 
 #include <limits.h>
@@ -16,66 +19,14 @@
 #include <math.h>
 #include <atomic>
 
-#ifdef _MSC_VER
-#include <intrin.h>
-#endif
-
 namespace aoo {
-
-inline uint32_t clz(uint32_t i) {
-#if defined(_MSC_VER)
-    unsigned long msb = 0;
-    _BitScanReverse(&msb, i);
-    return 31 - msb;
-#elif defined(__GNUC__)
-    return __builtin_clz(i);
-#else
-#error "compiler not supported"
-#endif
-}
 
 void * allocate(size_t size);
 void deallocate(void *ptr, size_t);
 
-template<typename T>
-class tagged_integer {
-public:
-    using type = T;
-    static constexpr T tag_bits = 16;
-    static constexpr T value_bits = sizeof(T) * CHAR_BIT - tag_bits;
-    static constexpr T tag_max = ((T)1 << tag_bits) - 1;
-    static constexpr T value_max = ((T)1 << value_bits) - 1;
+namespace detail {
 
-    tagged_integer() = default;
-    tagged_integer(T tag, T value)
-        : value_(((tag & tag_max) << value_bits) | (value & value_max)) {}
-
-    void set_value(T value) {
-        auto tag_part = value_ & ~value_max;
-        auto value_part = value & value_max;
-        value_ = tag_part | value_part;
-    }
-
-    T get_value() const {
-        return value_ & value_max;
-    }
-
-    void set_tag(T tag) {
-        auto value = value_ & value_max;
-        value_ = ((tag & tag_max) << value_bits) | value;
-    }
-
-    T get_tag() const {
-        return value_ >> value_bits;
-    }
-
-    T to_int() const {
-        return value_;
-    }
-private:
-    T value_ = 0;
-};
-
+// TODO: explain why the bitset needs to be tagged
 template<typename T>
 struct tagged_bitset {
     static constexpr size_t width = sizeof(T) * CHAR_BIT;
@@ -85,7 +36,7 @@ struct tagged_bitset {
     tagged_bitset(T bits_ = 0, uint16_t tag_ = 0) noexcept
         : bits(bits_), tag(tag_) {}
 
-    void set(T index, bool state) {
+    void set(size_t index, bool state) {
         if (state) {
             bits |= (T)1 << index;
         } else {
@@ -93,7 +44,7 @@ struct tagged_bitset {
         }
     }
 
-    bool get(T index) const {
+    bool get(size_t index) const {
         return (bits >> index) & 1;
     }
 
@@ -101,9 +52,9 @@ struct tagged_bitset {
         return bits == 0;
     }
 
-    T highest_bit() const {
+    size_t highest_bit() const {
         assert(bits != 0);
-        return 31 - clz(bits);
+        return 31 - clz((uint32_t)bits);
     }
 };
 
@@ -128,10 +79,10 @@ public:
         }
     }
 
-    void * allocate(size_t size) {
+    void* allocate(size_t size) {
         // NB: do not use fetch_add!
         auto index = index_.load(std::memory_order_relaxed);
-        while ((size_ - index) >= size) {
+        while ((capacity_ - index) >= size) {
             if (index_.compare_exchange_weak(index, index + size,
                     std::memory_order_acquire, std::memory_order_relaxed)) {
                 return data_ + index;
@@ -149,7 +100,7 @@ public:
         alloc_size_ = size + page_size;
         memory_ = alloc_type::allocate(alloc_size_);
         data_ = (char *)(((uintptr_t)memory_ + page_size - 1) & ~(page_size - 1));
-        size_ = size;
+        capacity_ = size;
         reset();
     }
 
@@ -162,11 +113,11 @@ public:
     }
 
     bool contains(char * ptr) const {
-        return ptr >= data_ && ptr < (data_ + size_);
+        return (uintptr_t)ptr >= (uintptr_t)data_ && (uintptr_t)ptr < ((uintptr_t)data_ + capacity_);
     }
 
-    size_t size() const {
-        return size_;
+    size_t capacity() const {
+        return capacity_;
     }
 
     const char *data() const {
@@ -175,13 +126,20 @@ public:
 private:
     char *data_{nullptr}; // pool start (aligned to page size)
     std::atomic<size_t> index_{0}; // begin of next allocation
-    size_t size_{0}; // nominal size
+    size_t capacity_{0}; // nominal capacity
     char *memory_{nullptr}; // pointer to memory block
     size_t alloc_size_{0}; // size of memory block
 };
 
+// NB: we use indices into the memory arena instead of pointers
+// because some platforms do not support the necessary DWCAS operations.
+// For example, XTensa (ESP32), 32-bit RISC-V and some 32-bit ARM CPUs
+// only support 32-bit atomic operations.
 using tagged_index = std::conditional_t<std::atomic<tagged_integer<uint64_t>>::is_always_lock_free,
-    tagged_integer<uint64_t>, tagged_integer<uint32_t>>;
+    tagged_integer<uint64_t>, tagged_integer<uint32_t, 12>>;
+
+// NB: make sure that max_index_value fits into size_t!
+constexpr size_t max_index_value = std::min<tagged_index::type>(tagged_index::max_value, SIZE_MAX);
 
 struct memory_block {
     union {
@@ -190,9 +148,6 @@ struct memory_block {
     };
 };
 
-// Note: we use indices into the memory arena instead of pointers
-// because some platforms do not support the necessary DWCAS operations.
-// For example, the ESP32 (currently) only supports 32-bit atomic operations.
 class free_list {
 public:
     void push(const void *pool, void *ptr) {
@@ -201,7 +156,7 @@ public:
         auto head = head_.load(std::memory_order_relaxed);
         for (;;) {
             block->next = head.get_value();
-            tagged_index new_head(head.get_tag() + 1, (size_t)index);
+            tagged_index new_head((size_t)index, head.get_tag() + 1);
             if (head_.compare_exchange_weak(head, new_head,
                     std::memory_order_acq_rel, std::memory_order_relaxed)) {
                 break;
@@ -209,16 +164,20 @@ public:
         }
     }
 
-    void * pop(const void *pool) {
+    void* pop(const void *pool) {
         auto head = head_.load(std::memory_order_relaxed);
         for (;;) {
             auto index = head.get_value();
-            auto tag = head.get_tag();
             if (index == sentinel) {
                 return nullptr;
             }
+            // NB: another thread may concurrently pop the head and overwrite
+            // the 'next' field in the memory block. Technically, this is UB,
+            // but we don't care because the CAS loop will fail anyway.
+            // However, this means that must not assert that the value is
+            // actually in the range [0, max_index_size(!
             auto block = reinterpret_cast<const memory_block*>((const char *)pool + index);
-            tagged_index new_head(head.get_tag() + 1, block->next);
+            tagged_index new_head(block->next, head.get_tag() + 1);
             if (head_.compare_exchange_weak(head, new_head,
                     std::memory_order_acq_rel, std::memory_order_relaxed)) {
                 return (void *)block;
@@ -232,7 +191,7 @@ public:
     }
 
     void reset() {
-        head_ = tagged_index(0, sentinel);
+        head_ = tagged_index(sentinel, 0);
     }
 
     size_t count(const void *pool) const {
@@ -246,13 +205,29 @@ public:
         return n;
     }
 private:
-    // NB: make sure that the sentinel fits into size_t!!
-    static constexpr auto sentinel = std::min<tagged_index::type>(tagged_index::value_max, SIZE_MAX);
-    std::atomic<tagged_index> head_{tagged_index{0, sentinel}};
+    // NB: 0 (nullptr) is a valid index, so we cannot use it as our sentinel index.
+    // Instead we use the largest possible representable value.
+    static constexpr size_t sentinel = max_index_value;
+    std::atomic<tagged_index> head_{tagged_index{sentinel, 0}};
 };
+
+} // namespace detail
 
 #ifndef AOO_RT_MEMORY_POOL_BITSET
 #define AOO_RT_MEMORY_POOL_BITSET 1
+#endif
+
+#ifndef AOO_DEBUG_RT_MEMORY
+#define AOO_DEBUG_RT_MEMORY 0
+#endif
+
+#ifndef AOO_RT_MEMORY_LEAK_DETECTION
+// enabled by default in debug builds
+#if !defined(NDEBUG)
+#define AOO_RT_MEMORY_LEAK_DETECTION 1
+#else
+#define AOO_RT_MEMORY_LEAK_DETECTION 0
+#endif
 #endif
 
 template<bool grow = true, typename Alloc = std::allocator<char>>
@@ -266,10 +241,10 @@ class rt_memory_pool : std::allocator_traits<Alloc>::template rebind_alloc<char>
     static constexpr size_t small_alloc_limit_bits = 12;
     static constexpr size_t large_alloc_limit = 65535;
 
-    using bitset = std::conditional_t<std::atomic<tagged_bitset<uint32_t>>::is_always_lock_free,
-        tagged_bitset<uint32_t>, tagged_bitset<uint16_t>>;
+    using bitset = std::conditional_t<std::atomic<detail::tagged_bitset<uint32_t>>::is_always_lock_free,
+                                      detail::tagged_bitset<uint32_t>, detail::tagged_bitset<uint16_t>>;
 public:
-    static constexpr size_t max_pool_size = std::min<tagged_index::type>(tagged_index::value_max * block_alignment, SIZE_MAX);
+    static constexpr size_t max_pool_size = detail::max_index_value;
 
     rt_memory_pool(const Alloc& alloc = Alloc{})
         : alloc_type(alloc), linear_allocator_(alloc) {
@@ -290,13 +265,15 @@ public:
     rt_memory_pool(const rt_memory_pool&) = delete;
     rt_memory_pool& operator=(const rt_memory_pool&) = delete;
 
-    ~rt_memory_pool() {}
+    ~rt_memory_pool() { check_leaks(); }
 
     void reset() {
+        check_leaks();
         linear_allocator_.reset();
         for (auto& fl : buckets_) {
             fl.reset();
         }
+        warned_.store(false);
     }
 
     void resize(size_t size) {
@@ -304,13 +281,21 @@ public:
         reset();
     }
 
-    size_t size() const {
-        return linear_allocator_.size();
+    size_t capacity() const {
+        return linear_allocator_.capacity();
     }
 
-    void * allocate(size_t size) {
+    void* allocate(size_t size) {
+#if AOO_RT_MEMORY_LEAK_DETECTION || AOO_DEBUG_RT_MEMORY
+        auto num_blocks = num_blocks_.fetch_add(1, std::memory_order_acquire) + 1;
+        auto num_bytes = num_bytes_.fetch_add(size, std::memory_order_acquire) + size;
+#if AOO_DEBUG_RT_MEMORY
+        LOG_DEBUG("rt_memory_pool: allocate " << size << " bytes (" << num_bytes
+                  << " bytes, " << num_blocks << " blocks total)");
+#endif
+#endif
         if (size > large_alloc_limit) {
-            LOG_VERBOSE("RT memory request (" << size << " bytes) too large - using default allocator");
+            LOG_INFO("RT memory request (" << size << " bytes) too large - using default allocator");
             // fall back to heap allocation
             return alloc_type::allocate(size);
         } else if (size > 0) {
@@ -320,7 +305,7 @@ public:
                 ptr = linear_allocator_.allocate(alloc_size);
             }
             if (grow && !ptr) {
-                if (!warned_.exchange(true, std::memory_order_relaxed)) {
+                if (!warned_.exchange(true)) {
                     LOG_WARNING("RT memory pool exhausted - using default allocator");
                 }
                 ptr = alloc_type::allocate(size);
@@ -332,6 +317,14 @@ public:
     }
 
     void deallocate(void *ptr, size_t size) {
+#if AOO_RT_MEMORY_LEAK_DETECTION || AOO_DEBUG_RT_MEMORY
+        auto num_blocks = num_blocks_.fetch_sub(1, std::memory_order_acquire) - 1;
+        auto num_bytes = num_bytes_.fetch_sub(size, std::memory_order_acquire) - size;
+#if AOO_DEBUG_RT_MEMORY
+        LOG_DEBUG("rt_memory_pool: deallocate " << size << " bytes (" << num_bytes
+                  << " bytes, " << num_blocks << " blocks remaining)");
+#endif
+#endif
         if (size > large_alloc_limit) {
             // fall back to heap allocation
             alloc_type::deallocate((char *)ptr, size);
@@ -347,7 +340,7 @@ public:
 
     void print() {
         std::cout << "total RT memory usage: " << memory_usage()
-                  << " / " << size() << " bytes" << std::endl;
+                  << " / " << capacity() << " bytes" << std::endl;
 
         for (size_t i = 0; i < buckets_.size(); ++i) {
             auto count = buckets_[i].count(linear_allocator_.data());
@@ -361,13 +354,31 @@ public:
         return linear_allocator_.count();
     }
 private:
-    std::array<free_list, bucket_count> buckets_;
+    std::array<detail::free_list, bucket_count> buckets_;
     std::array<uint32_t, bucket_count> bucket_sizes_;
 #if AOO_RT_MEMORY_POOL_BITSET
     std::array<std::atomic<bitset>, bucket_count / bitset::width> bitset_;
 #endif
-    concurrent_linear_allocator<Alloc> linear_allocator_;
+    detail::concurrent_linear_allocator<Alloc> linear_allocator_;
+#if AOO_RT_MEMORY_LEAK_DETECTION || AOO_DEBUG_RT_MEMORY
+    std::atomic<ptrdiff_t> num_blocks_{0};
+    std::atomic<ptrdiff_t> num_bytes_{0};
+#endif
     std::atomic_bool warned_{false};
+
+    void check_leaks() {
+#if AOO_RT_MEMORY_LEAK_DETECTION || AOO_DEBUG_RT_MEMORY
+        auto num_blocks = num_blocks_.exchange(0);
+        auto num_bytes = num_bytes_.exchange(0);
+        if (num_blocks != 0 || num_bytes != 0) {
+            LOG_ERROR("rt_memory_pool: leaked " << num_blocks
+                      << " blocks and " << num_bytes << " bytes");
+            assert(false);
+        } else if (memory_usage() > 0) {
+            LOG_DEBUG("rt_memory_pool: no leaks detected");
+        }
+#endif
+    }
 
     size_t get_alloc_size(size_t size) {
         if (size > small_alloc_limit) {
@@ -394,9 +405,9 @@ private:
             // auto mask = pow2 - 1;
             // auto rem = size & mask;
             const auto k = large_bucket_offset - small_alloc_limit_bits * 16;
-            // a) return (ilog2 + rem / pow2 - small_alloc_limit_bits) * 16 + large_bucket_offset;
-            // b) return ilog2 * 16 + rem * 16 / pow2 + k;
-            // c) return (ilog2 << 4) + ((size & ((1 << ilog2) - 1)) >> (ilog2 - 4)) + k;
+            // 1. return (ilog2 + rem / pow2 - small_alloc_limit_bits) * 16 + large_bucket_offset;
+            // 2. return ilog2 * 16 + rem * 16 / pow2 + k;
+            // 3. return (ilog2 << 4) + ((size & ((1 << ilog2) - 1)) >> (ilog2 - 4)) + k;
             auto index = (ilog2 << 4) + ((size >> (ilog2 - 4)) & 15) + k;
             assert(index >= 64 && index < 128);
             return index;
@@ -406,7 +417,7 @@ private:
         }
     }
 
-    void * find_block(size_t size) {
+    void* find_block(size_t size) {
         auto index = size_to_index(size);
         assert(index < buckets_.size());
         // first try to get block of matching size
@@ -417,7 +428,7 @@ private:
         return ptr;
     }
 
-    void * find_matching_block(size_t start_index) {
+    void* find_matching_block(size_t start_index) {
         // find the largest available block above 'start_index'
     #if AOO_RT_MEMORY_POOL_BITSET
         // 1) iterate over bitsets (in reverse)
@@ -428,7 +439,11 @@ private:
                 continue;
             }
             // iterate over bits (in reverse)
-            for (int i = bitset.highest_bit(); i >= 0; --i) {
+            for (int i = (int)bitset.highest_bit(); i >= 0; --i) {
+            #if 0
+                // reload bitset
+                bitset = bitset_[k].load(std::memory_order_relaxed);
+            #endif
                 if (bitset.get(i)) {
                     auto block_index = k * bitset::width + i;
                     if (block_index > start_index) {
@@ -439,6 +454,7 @@ private:
                             }
                             return ptr;
                         }
+                        // try next bit
                     } else {
                         return nullptr;
                     }
@@ -487,7 +503,7 @@ private:
     void return_block(void *ptr, size_t size) {
         auto index = size_to_index(size);
         assert(index < buckets_.size());
-        assert(index < linear_allocator_.size());
+        assert(index < linear_allocator_.capacity());
         push_block(ptr, index);
     }
 
@@ -497,6 +513,8 @@ private:
         auto i = index & (bitset::width - 1);
         // set bit atomically with ABA protection.
         // this guarantees that the most recent caller writes the correct state.
+        // NB: we need to load the bitset with memory_order_acquire so that the
+        // bucket check cannot be moved across!
         auto bs = bitset_[k].load(std::memory_order_acquire);
         for (;;) {
             bitset bs_new(bs.bits, bs.tag + 1);
@@ -516,7 +534,7 @@ private:
     #endif
     }
 
-    void * pop_block(size_t index) {
+    void* pop_block(size_t index) {
         auto ptr = buckets_[index].pop(linear_allocator_.data());
     #if AOO_RT_MEMORY_POOL_BITSET
         if (ptr) {

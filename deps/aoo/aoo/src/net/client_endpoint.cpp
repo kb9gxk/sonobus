@@ -15,7 +15,7 @@ user* group::add_user(user&& usr) {
     }
 }
 
-user* group::find_user(const std::string& name) {
+user* group::find_user(std::string_view name) {
     for (auto& usr : users_) {
         if (usr.name() == name) {
             return &usr;
@@ -83,7 +83,11 @@ void client_endpoint::send_message(const osc::OutboundPacketStream& msg) const {
     auto size = msg.Size() + 4;
     // we know that the buffer is not really constant
     aoo::to_bytes<int32_t>(msg.Size(), const_cast<char *>(data));
-    if (replyfn_(context_, id_, (AooByte *)data, size) < 0) {
+    try {
+        replyfn_((const AooByte *)data, size);
+    } catch (const socket_error& e) {
+        LOG_WARNING("AooServer: send() failed for client "
+                    << id_ << ": " << e.what());
         // TODO handle error
     }
 }
@@ -131,8 +135,8 @@ void client_endpoint::send_notification(Server& server, const AooData &data) con
     send_message(msg);
 }
 
-void client_endpoint::send_peer_add(Server& server, const group& grp, const user& usr,
-                                    const client_endpoint& client) const {
+void client_endpoint::send_peer_join(Server& server, const group& grp, const user& usr,
+                                     const client_endpoint& client) const {
 
     LOG_DEBUG("AooServer: send peer " << grp << "|" << usr << " " << client.public_addresses().front()
               << " to client " << id() << " " << public_addresses().front());
@@ -151,18 +155,18 @@ void client_endpoint::send_peer_add(Server& server, const group& grp, const user
         << grp.name().c_str() << grp.id()
         << usr.name().c_str() << usr.id()
         << client.version().c_str() << (int32_t)flags
+        << usr.metadata() << usr.relay_addr();
     // IP addresses
-        << (int32_t)client.public_addresses().size();
+    msg << (int32_t)client.public_addresses().size();
     for (auto& addr : client.public_addresses()){
         msg << addr;
     }
-    msg << usr.metadata() << usr.relay_addr()
-        << osc::EndMessage;
+    msg << osc::EndMessage;
 
     send_message(msg);
 }
 
-void client_endpoint::send_peer_remove(Server& server, const group& grp, const user& usr) const {
+void client_endpoint::send_peer_leave(Server& server, const group& grp, const user& usr) const {
     LOG_DEBUG("AooServer: remove peer " << grp.name() << "|" << usr.name());
 
     auto msg = server.start_message();
@@ -217,12 +221,31 @@ void client_endpoint::on_close(Server& server) {
     id_ = kAooIdInvalid;
 }
 
-void client_endpoint::handle_message(Server &server, const AooByte *data, int32_t n) {
+void client_endpoint::handle_data(Server &server, const AooByte *data, int32_t n) {
     receiver_.handle_message((const char *)data, n,
             [&](const osc::ReceivedPacket& packet) {
         osc::ReceivedMessage msg(packet);
         server.handle_message(*this, msg, packet.Size());
     });
+}
+
+std::pair<bool, double> client_endpoint::update(Server& server, aoo::time_tag now,
+                                                const AooPingSettings &settings) {
+    auto result = ping_timer_.update(now, settings);
+    if (result.ping) {
+        auto msg = server.start_message();
+
+        msg << osc::BeginMessage(kAooMsgClientPing) << osc::EndMessage;
+
+        send_message(msg);
+    }
+    if (result.state == ping_state::inactive) {
+        if (active_) {
+            active_ = false;
+            return { true, result.wait };
+        }
+    }
+    return { false, result.wait };
 }
 
 void client_endpoint::on_group_join(Server&, const group& grp, const user& usr) {

@@ -1,126 +1,130 @@
-AOO (audio over OSC) v2.0-test3
-===============================
+AOO (audio over OSC)
+=====================
 
-AOO ("audio over OSC") is a message based audio system, using Open Sound Control [^OSC] as the underlying transport protocol.
-It is fundamentally connectionless and allows to send audio in real time and on demand between arbitrary network endpoints.
+# Introduction
+
+AOO is a lightweight and flexible peer-to-peer audio streaming and messaging solution, using Open Sound Control [^OSC] as the underlying transport protocol.
+
+It is fundamentally connectionless and allows to send audio and messages in real time and on demand between arbitrary network endpoints.
+
+The C/C++ library can be easily embedded in host applications or plugins. It even runs on embedded devices, such as the ESP32.
+In addition, the project contains a Pure Data external and a SuperCollider extension.
+There is also a third-party Max/MSP external ("AOO for Max"): https://github.com/ddgg-el/aoo-for-max
+
+For more information please visit https://aoo.iem.at.
 
 **WARNING**: AOO is still alpha software, there are breaking changes between pre-releases!
 
+---
 
+# Selected features
 
-### Features
+- Peer-to-peer audio networks (IPv4 and IPv6) of any topology with arbitrary ad-hoc connections.
 
-* peer-to-peer audio networks of any topology with arbitrary ad-hoc connections
+- Each IP endpoint can have multiple so-called 'sources' (= senders) and 'sinks' (= receivers).
 
-* each endpoint can have multiple sources/sinks (each with their own ID)
+- Sources can send audio to several sinks. Conversely, sinks can receive from several sources, summing the signals at the output.
 
-* AOO sources can send audio to any sink at any time;
+- AOO is connectionless: streams can start/stop at any time, enabling a "message-based audio" approach.
 
-* AOO sinks can listen to several sources at the same time, summing the signals
-
-* AOO is connectionless: streams can start/stop at any time, enabling a "message-based audio" approach.
-
-* AOO sinks can "invite" and "uninvite" sources, i.e. ask them to send resp. stop sending audio.
+- AOO sinks can "invite" and "uninvite" sources, i.e. ask them to send resp. stop sending audio.
   The source may accept the (un)invitation or decline it.
 
-* streams and invitations can contain arbitrary metadata
+- Sources can send arbitrary messages with sample-accurate timestamps together with the audio data.
+  For example, this may be used to embed control data, timing information or MIDI messages.
 
-* AOO sinks and sources can operate at different blocksizes and samplerates
+- Sources and sinks can operate at different blocksizes and samplerates. Streams are resampled and reblocked automatically.
 
-* AOO sources can dynamically change the channel onset
+- Clock differences between machines can be adjusted automatically with dynamic resampling.
 
-* timing differences (e.g. because of clock drifts) can be adjusted via a time DLL filter + dynamic resampling
+- Support for different audio codecs. Currently, only PCM (uncompressed) and Opus (compressed) are implemented,
+  but additional codecs can be added with the codec plugin API.
 
-* the stream format can be set independently for each source
+- Network jitter, packet reordering and packet loss are handled by the sink jitter buffer deals.
+  The latency can be adjusted dynamically.
 
-* support for different audio codecs. Currently only PCM (uncompressed) and Opus (compressed) are implemented,
-  but additional codecs can be added with the codec plugin API
+- Sinks can ask sources to resend dropped packets.
 
-* AooSource and AooSink C++ classes use lock-free queues, so that audio processing and network I/O
-  can run on different threads without having to wait for each other
+- Several diagnostic events about packet loss, resent packets, etc.
 
-* the sink jitter buffer helps to deal with network jitter, packet reordering
-  and packet loss at the cost of latency. The size can be adjusted dynamically.
+- A connection server (`aooserver`) facilitates peer-to-peer communication in local networks or over the public internet.
 
-* sinks can ask the source(s) to resend dropped packets; the settings are free adjustable.
+- AOO clients can send each other timestamped messages with optional reliable transmission.
 
-* settable UDP packet size (to optimize for local networks or the internet)
+---
 
-* ping messages are automatically sent between sources and sinks at a configurable rate.
-  They carry NTP timestamps, so the user can calculate the network latency and perform latency compensation.
-  The source also receives the current average packet loss percentage.
+# History
 
-* several diagnostic events about packet loss, packet reordering, resent packets, etc.
+The vision of AOO was first presented in 2009 by Winfried Ritsch together with a proof-of-concept for embedded devices.
+In 2010 it has been implemented by Wolfgang Jäger as a library (v1.0-b2) with externals for Pure Data (Pd) [^Jaeger], but its practical use remained limited.
+AOO 1.0 is the topic of Winfried Ritsch's paper "towards message based audio systems" which he presented at LAC 2014 [^LAC14].
 
-* AooServer is a UDP hole punching server [^Udp] that facilitates peer-to-peer communication over the public internet.
+In 2020 AOO has been reimplemented from scratch by Christof Ressi.
+The first draft version has been developed in February 2020 for a network streaming project at Kunsthaus Graz with Bill Fontana, using an independent wireless network infrastructure FunkFeuer Graz [^0xFF].
+It was subsequently used for the Virtual Rehearsal Room project [^VRR] which allowed musicians at the University of Arts Graz to rehearse and perform remotely during the early Covid pandemic.
+The first public pre-release of AOO 2.0 has been published in April 2020.
+Since then it has been used in several art projects and software applications.
 
-* AooClient connects to an AooServer and manages several AOO sources/sinks.
+---
 
+# Content
 
+`aoo`      - AOO C/C++ library source code
 
-### History
+`cmake`    - CMake helper files
 
-The vision of AOO was first proposed in 2009 by Winfried Ritsch together with an initial draft of realisation for embedded devices.
-In 2010 it has been implemented by Wolfgang Jäger as a library (v1.0-b2) with externals for Pure Data (Pd) [^Pd],
-but major issues with the required networking objects made this version unpracticable and so it was not used extensively.
-More on this version of AOO as "message based audio system" was published at LAC 2014 [^LAC14]
+`common`   - shared code
 
-A new version (2.0, not backwards compatible) has been written from scratch by Christof Ressi, with a first pre-release in April 2020.
-It has been initially developed in February 2020 for a network streaming project at Kunsthaus Graz with Bill Fontana, using an independent
-wireless network infrastructure FunkFeuer Graz [^0xFF]. It was subsequently used for the Virtual Rehearsal Room project [^VRR]
-and also helped reviving the Virtual IEM Computer Music Ensemble [^VICE] within a seminar at the IEM [^IEM] in Graz.
+`deps`     - dependencies
 
+`doc`      - documentation
 
+`doxygen`  - doxygen documentation
 
-### Content
+`examples` - examples
 
-`aoo`     - AOO C/C++ library source code
-`cmake`   - CMake stuff (e.g. feature tests)
-`common`  - shared code
-`deps`    - dependencies
-`doku`    - documentation, papers
-`doxygen` - doxygen documentation
-`include` - public headers
-`pd`      - Pd external
-`sc`      - SC extension
-`tests`   - test suite
+`include`  - public headers
 
+`pd`       - Pd external
 
-#### C/C++ library
+`sc`       - SC extension
 
-The public API headers are contained in the `aoo/include` directory.
+`server`   - the `aooserver` command line program
 
-To generate the API documentation you need to have `doxygen` installed. Just run the `doxygen`
-command in the toplevel folder and it will store the generated files in the `doxygen` folder.
-You can view the documentation in a standard web browser by opening `doxygen/html/index.html`.
+`tests`    - test suite
 
-The library features 4 object classes:
+---
 
-`AooSource` - AOO source object, see `aoo_source.h` and `aoo_source.hpp` in `include/aoo`.
+# C/C++ library
 
-`AooSink` - AOO sink object, see `aoo_sink.h` and `aoo_sink.hpp` in `include/aoo`.
+The `aoo` library is written in C++17 and provides a pure C API as well as a C++ API. The public API headers are contained in the [`include`](include) directory.
 
-`AooClient` - AOO client object, see `aoo_client.h` and `aoo_client.hpp` in `include/aoo`.
+For build instructions please see [INSTALL.md](INSTALL.md).
 
-`AooServer` - AOO UDP hole punching server, see `aoo_server.h` and `aoo_server.hpp` in `include/aoo`.
+The C API may be used for creating bindings to other languages, such as Rust, Python, Java or C#.
 
 **NOTE**:
-By following certain COM conventions (no virtual destructors, no method overloading, only simple
-function parameters and return types), we achieve portable C++ interfaces on Windows and all other
-platforms with a stable vtable layout (generally true for Linux and macOS, in my experience).
-This means you can grab a pre-build version of the AOO shared library and directly use it in your
-C++ project.
+In general, C++ does not have a standardized ABI. However, by following certain COM idioms, we provide portable C++ interfaces. This means you can use a pre-build version of the `aoo` shared library, even though it may have been built with a different compiler (version).
 
-The C interface is meant to be used in C projects and for creating bindings to other languages.
+The library features four object classes:
 
+- `AooSource` - AOO source object, see [`aoo_source.hpp`](include/aoo_source.hpp) resp. [`aoo_source.h`](include/aoo_source.h).
 
-#### Pd external
+- `AooSink` - AOO sink object, see [`aoo_sink.hpp`](include/aoo_sink.hpp) resp. [`aoo_sink.h`](include/aoo_sink.h).
+
+- `AooClient` - AOO client object, see [`aoo_client.hpp`](include/aoo_client.hpp) resp. [`aoo_client.h`](include/aoo_client.h).
+
+- `AooServer` - AOO UDP hole punching server, see [`aoo_server.hpp`](include/aoo_server.hpp) resp. [`aoo_server.h`](include/aoo_server.h).
+
+---
+
+# Pd external
 
 Objects:
 
-`[aoo_send~]` - send an AOO stream (with integrated threaded network IO)
+`[aoo_send~]` - send an AOO stream
 
-`[aoo_receive~]` - receive one or more AOO streams (with integrated threaded network IO)
+`[aoo_receive~]` - receive one or more AOO streams
 
 `[aoo_client]` - connect to AOO peers over the public internet or in a local network
 
@@ -130,122 +134,72 @@ For documentation see the corresponding help patches.
 
 The Pd external is available on Deken (in Pd -> Help -> "Find externals" search for "aoo".)
 
+---
 
-#### SC extension
+# SC extension
 
-TODO
+Classes/UGens:
 
+`AooSend` - a UGen that sends an AOO stream
 
+`AooSendCtl` - control an `AooSend` UGen
 
-### Build instructions
+`AooReceive`- a UGen that receives on or more AOO streams
 
-#### Prerequisites
+`AooReceiveCtl` - control an `AooReceive` UGen
 
-1. Install CMake [^CMake]
-2. Install Git [^Git]
-2. Get the AOO source code: http://git.iem.at/cm/aoo/
-   SSH: `git clone git@git.iem.at:cm/aoo.git`
-   HTTPS: `git clone https://git.iem.at/cm/aoo.git`
+`AooClient` - connect to AOO peers over the public internet or in a local network
 
+`AooServer` - AOO connection server
 
-##### Pure Data
+... and many more.
 
-1. Install Pure Data.
-   Windows/macOS: http://msp.ucsd.edu/software.html
-   Linux: `sudo apt-get install pure-data-dev
-2. The `AOO_BUILD_PD_EXTERNAL` CMake variable must be `ON`
-3. Make sure that `PD_INCLUDEDIR` points to the Pd `src` or `include` directory.
-4. Windows: make sure that `PD_BINDIR` points to the Pd `bin` directory.
-5. Set `PD_INSTALLDIR` to the desired installation path (if you're not happy with the default).
+See `Guides/AOO_Introduction.schelp` for a gentle introduction
+and the corresponding help files for detailed documentation.
 
-If you do *not* want to build the Pd external, set `AOO_BUILD_PD_EXTERNAL` to `OFF`!
+---
 
+# The aooserver command line program
 
-##### SuperCollider
+If you want to host your own (private or public) AOO server, you only have to run `aooserver`
+on the command line or as a service and make sure that clients can connect to your machine.
 
-1. Clone the SuperCollider source code from https://github.com/supercollider/supercollider.
-2. The `AOO_BUILD_SC_EXTENSION` CMake variable must be `ON`
-3. Set `SC_INCLUDEDIR` to the `supercollider` folder (which should contain the subfolders `common` and `include`)
-4. Set `SC_INSTALLDIR` to the desired installation path (if you're not happy with the default).
-5. Set `SC_SUPERNOVA` to `ON` if you want to also build a Supernova version.
+Run `aooserver -h` to see all available options.
 
-If you do *not* want to build the SC extension, set `AOO_BUILD_SC_EXTENSION` to `OFF`!
+---
 
+# Notes
 
-##### Opus
+### Windows Time Service
 
-Opus[^Opus] is a high quality low latency audio codec.
-If you want to build AOO with integrated Opus support there are two options:
+By default, the Windows Time Service (`W32Time`) is often configured so that time synchronization is done with
+a fixed "special poll interval" — instead of a min. and max. poll interval — that can be as large
+as 7 days (!). The Pd/SC externals try to detect this and print a warning to the console.
 
-a) Link with the system wide `opus` library
+You can disable the special poll interval by running the following command in `cmd.exe`:
+```
+w32tm /config /manualpeerlist:pool.ntp.org,0x8 /syncfromflags:manual /update
+```
 
-1. Install Opus:
-  * macOS -> homebrew: `brew install opus`
-  * Windows -> Msys2: `pacman -S mingw32/mingw-w64-i686-opus` (32 bit) resp.
-                      `pacman -S mingw64/mingw-w64-x86_64-opus` (64 bit)
-  * Linux -> apt: `sudo apt-get install libopus-dev`
-2. Set the `AOO_SYSTEM_OPUS` CMake variable to `ON` (see below).
-   **NOTE**: You can override the `AOO_OPUS_LDFLAGS` variable if you need special linker commands.
+**NOTE**: the command above also replaces the default Windows time server (`time.windows.com`) with `pool.ntp.org` for better reliability and accuracy.
 
-b) Use local Opus library
+You can check the current status with
+```
+w32tm /query /status
+```
 
-1. Run `git submodule update --init` to fetch the Opus source code.
-2. Make sure that `AOO_SYSTEM_OPUS` CMake variable is `OFF` (default).
-3. Now Opus will be included in the project and you can configure it as needed.
-   **NOTE**: Don't build the shared library, i.e. `OPUS_BUILD_SHARED_LIBRARY` should be `OFF`.
+---
 
-**NOTE**: by default, a) will link dynamically with the Opus library and b) will link statically.
-For local builds, a) is more convenient. If you want to ship it to other people, b) might be preferred.
+# Footnotes
 
-
-#### Build
-
-1. In the "aoo" folder create a subfolder named "build".
-2. Navigate to `build` and execute `cmake .. <options>`. Available options are listed below.
-3. Build the project with `cmake --build .`
-4. Install the project with `cmake --build . --target install/strip`
-
-
-##### CMake options
-
-CMake options are set with the following syntax:
-`cmake .. -D<name1>=<value1> -D<name2>=<value2>` etc.
-
-**HINT**: setting options is much more convenient in a graphical interface like `cmake-gui`.
-(You might need to install it seperately.)
-
-These are the most important project options:
-* `AOO_NET` (BOOL) - Build with integrated networking support (`AooClient` and `AooServer`).
-   Disable it if you don't need it and want to reduce code size.
-   **NOTE**: It is required for the Pd and SC extensions. Default: `ON`.
-* `AOO_BUILD_STATIC_LIBRARY` (BOOL) - Build static AOO library. Default: `ON`.
-* `AOO_BUILD_SHARED_LIBRARY` (BOOL) - Build shared AOO library. Default: `ON`.
-* `AOO_BUILD_PD_EXTERNAL` (BOOL) - Build the Pd external. Default: `ON`.
-* `AOO_BUILD_SC_EXTENSION` (BOOL) - Build the SuperCollider extension. Default: `ON`
-* `AOO_CODEC_OPUS` (BOOL) - Enable/disable built-in Opus support
-* `AOO_LOG_LEVEL` (STRING) - Choose one of the following log levels:
-   "None", "Error", "Warning", "Verbose", "Debug". Default: "Warning".
-* `AOO_STATIC_LIBS` (BOOL) - Linux and MinGW only:
-   Link statically with `libgcc`, `libstdc++` and `libpthread`. Makes sure that the
-   resulting binaries don't depend on specific system library versions. Default: `ON`.
-* `CMAKE_BUILD_TYPE` (STRING) - Choose one of the following build types:
-   "Release", "RelMinSize", "RelWithDebInfo", "Debug". Default: "Release".
-* `CMAKE_INSTALL_PREFIX` (PATH) - Where to install the AOO C/C++ library.
-
-`cmake-gui` will show all available options. Alternatively, run `cmake . -LH` from the `build` folder.
-
-
-### Footnotes
-
-[^CMake]: https://cmake.org/
-[^Git]: https://git-scm.com/
-[^IEM]: http://iem.at/
 [^Jaeger]: https://phaidra.kug.ac.at/view/o:11413
-[^LAC14]: see docu/lac2014_aoo.pdf
+
+[^LAC14]: http://lac.linuxaudio.org/2014/papers/36.pdf
+
 [^Opus]: https://opus-codec.org/
+
 [^OSC]: http://opensoundcontrol.org/
-[^Pd]: http://puredata.info/
-[^Udp]: https://en.wikipedia.org/wiki/UDP_hole_punching
-[^VICE]: https://iaem.at/projekte/ice/overview
+
 [^VRR]: https://vrr.iem.at/
+
 [^0xFF]: http://graz.funkfeuer.at/

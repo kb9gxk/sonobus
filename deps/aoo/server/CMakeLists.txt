@@ -1,17 +1,18 @@
-set(INCLUDE "../include/aoo")
-set(COMMON "../common")
+add_executable(aooserver "main.cpp")
 
-add_executable(SERVER "main.cpp")
-set_target_properties(SERVER PROPERTIES OUTPUT_NAME "aooserver")
-target_compile_definitions(SERVER PUBLIC -DAOO_STATIC)
-target_link_libraries(SERVER AOO_STATIC ${LIBS})
+if (BUILD_SHARED_LIBS)
+    target_sources(aooserver PRIVATE
+        "../common/net_utils.cpp"
+        "../common/net_utils.hpp"
+        "../common/sync.cpp"
+        "../common/sync.hpp")
 
-# platform specific definitions and options
-if (WIN32)
-    target_link_libraries(SERVER "ws2_32")
+    if (WIN32)
+        target_link_libraries(aooserver PRIVATE ws2_32)
+    endif()
 endif()
 
-install(TARGETS SERVER
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+target_link_libraries(aooserver PRIVATE aoo aoo_common aoo_binary)
+
+# TODO: install PDB file (Visual Studio)
+install(TARGETS aooserver)

@@ -2,8 +2,8 @@
  * For information on usage and redistribution, and for a DISCLAIMER OF ALL
  * WARRANTIES, see the file, "LICENSE.txt," in this distribution.  */
 
-#include "aoo/aoo_codec.h"
-#include "aoo/codec/aoo_pcm.h"
+#include "aoo_codec.h"
+#include "codec/aoo_pcm.h"
 
 #include "../detail.hpp"
 
@@ -159,11 +159,11 @@ AooSample float64_to_sample(const AooByte *in)
 
 void print_format(const AooFormatPcm& f)
 {
-    LOG_VERBOSE("PCM settings: "
-                << "nchannels = " << f.header.numChannels
-                << ", blocksize = " << f.header.blockSize
-                << ", samplerate = " << f.header.sampleRate
-                << ", bitdepth = " << bytes_per_sample(f.bitDepth));
+    LOG_INFO("PCM settings: "
+             << "nchannels = " << f.header.numChannels
+             << ", blocksize = " << f.header.blockSize
+             << ", samplerate = " << f.header.sampleRate
+             << ", bitdepth = " << bytes_per_sample(f.bitDepth));
 }
 
 bool validate_format(AooFormatPcm& f, bool loud = true)
@@ -214,31 +214,33 @@ bool validate_format(AooFormatPcm& f, bool loud = true)
 //------------------- PCM codec -----------------------------//
 
 struct PcmCodec : AooCodec {
-    PcmCodec(const AooFormatPcm& f);
+    PcmCodec();
 
-    int sampleSize_;
+    int numChannels_ = 0;
+    int sampleSize_ = -1;
 };
 
-AooCodec * AOO_CALL PcmCodec_new(AooFormat *f, AooError *err){
+AooCodec * AOO_CALL PcmCodec_new() {
+    return aoo::construct<PcmCodec>();
+}
+
+void AOO_CALL PcmCodec_free(AooCodec *c) {
+    aoo::destroy(static_cast<PcmCodec *>(c));
+}
+
+AooError AOO_CALL PcmCodec_setup(AooCodec *c, AooFormat *f) {
+    auto codec = static_cast<PcmCodec*>(c);
     auto fmt = (AooFormatPcm *)f;
-    if (!validate_format(*fmt, true)){
-        if (err) {
-            *err = kAooErrorBadArgument;
-        }
-        return nullptr;
+    if (!validate_format(*fmt, true)) {
+        return kAooErrorBadArgument;
     }
 
     print_format(*fmt);
 
-    if (err){
-        *err = kAooOk;
-    }
+    codec->numChannels_ = fmt->header.numChannels;
+    codec->sampleSize_ = bytes_per_sample(fmt->bitDepth);
 
-    return aoo::construct<PcmCodec>(*fmt);
-}
-
-void AOO_CALL PcmCodec_free(AooCodec *c){
-    aoo::destroy(static_cast<PcmCodec *>(c));
+    return kAooOk;
 }
 
 AooError AOO_CALL PcmCodec_control(
@@ -246,30 +248,38 @@ AooError AOO_CALL PcmCodec_control(
     switch (ctl){
     case kAooCodecCtlReset:
         // no op
-        return kAooOk;
+        break;
+    case kAooCodecCtlGetLatency:
+        assert(size == sizeof(AooInt32));
+        *reinterpret_cast<AooInt32 *>(ptr) = 0;
+        break;
     default:
         LOG_WARNING("PCM: unsupported codec ctl " << ctl);
         return kAooErrorNotImplemented;
     }
+    return kAooOk;
 }
 
 AooError AOO_CALL PcmCodec_encode(
-        AooCodec *enc,const AooSample *s, AooInt32 n,
-        AooByte *buf, AooInt32 *size)
+        AooCodec *c, const AooSample *inSamples, AooInt32 frameSize,
+        AooByte *outData, AooInt32 *outSize)
 {
-    auto samplesize = static_cast<PcmCodec *>(enc)->sampleSize_;
-    auto nbytes = samplesize * n;
+    auto enc = static_cast<PcmCodec*>(c);
+    auto nchannels = enc->numChannels_;
+    auto nsamples = frameSize * nchannels;
+    auto samplesize = enc->sampleSize_;
+    auto nbytes = nsamples * samplesize;
 
-    if (*size < nbytes){
+    if (*outSize < nbytes){
         LOG_WARNING("PCM: size mismatch! input bytes: "
-                    << nbytes << ", output bytes " << *size);
+                    << nbytes << ", output bytes " << *outSize);
         return kAooErrorInsufficientBuffer;
     }
 
     auto samples_to_bytes = [&](auto fn){
-        auto b = buf;
-        for (int i = 0; i < n; ++i){
-            fn(s[i], b);
+        auto b = outData;
+        for (int i = 0; i < nsamples; ++i){
+            fn(inSamples[i], b);
             b += samplesize;
         }
     };
@@ -295,36 +305,39 @@ AooError AOO_CALL PcmCodec_encode(
         return kAooErrorBadArgument;
     }
 
-    *size = nbytes;
+    *outSize = nbytes;
 
     return kAooOk;
 }
 
 AooError AOO_CALL PcmCodec_decode(
-        AooCodec *dec, const AooByte *buf, AooInt32 size,
-        AooSample *s, AooInt32 *n)
+        AooCodec *c, const AooByte *inData, AooInt32 inSize,
+        AooSample *outSamples, AooInt32 *frameSize)
 {
-    if (!buf){
+    auto dec = static_cast<PcmCodec*>(c);
+    auto nchannels = dec->numChannels_;
+    auto noutsamples = *frameSize * nchannels;
+    if (!inData) {
         // dropped block, just zero
-        for (int i = 0; i < *n; ++i){
-            s[i] = 0;
+        for (int i = 0; i < noutsamples; ++i){
+            outSamples[i] = 0;
         }
         return kAooOk;
     }
 
-    auto samplesize = static_cast<PcmCodec *>(dec)->sampleSize_;
-    auto nsamples = size / samplesize;
+    auto samplesize = dec->sampleSize_;
+    auto ninsamples = inSize / samplesize;
 
-    if (*n < nsamples){
+    if (ninsamples > noutsamples) {
         LOG_WARNING("PCM: size mismatch! input samples: "
-                    << nsamples << ", output samples " << *n);
+                    << ninsamples << ", output samples " << noutsamples);
         return kAooErrorInsufficientBuffer;
     }
 
     auto blob_to_samples = [&](auto convfn){
-        auto b = buf;
-        for (int i = 0; i < *n; ++i, b += samplesize){
-            s[i] = convfn(b);
+        auto b = inData;
+        for (int i = 0; i < ninsamples; ++i, b += samplesize){
+            outSamples[i] = convfn(b);
         }
     };
 
@@ -349,7 +362,7 @@ AooError AOO_CALL PcmCodec_decode(
         return kAooErrorBadArgument;
     }
 
-    *n = nsamples;
+    *frameSize = ninsamples / nchannels;
 
     return kAooOk;
 }
@@ -406,15 +419,18 @@ AooError AOO_CALL deserialize(
 }
 
 AooCodecInterface g_interface = {
-    sizeof(AooCodecInterface),
+    AOO_STRUCT_SIZE(AooCodecInterface, deserialize),
+    kAooCodecPcm,
     // encoder
     PcmCodec_new,
     PcmCodec_free,
+    PcmCodec_setup,
     PcmCodec_control,
     PcmCodec_encode,
     // decoder
     PcmCodec_new,
     PcmCodec_free,
+    PcmCodec_setup,
     PcmCodec_control,
     PcmCodec_decode,
     // helper
@@ -422,15 +438,14 @@ AooCodecInterface g_interface = {
     deserialize
 };
 
-PcmCodec::PcmCodec(const AooFormatPcm& f) {
+PcmCodec::PcmCodec() {
     cls = &g_interface;
-    sampleSize_ = bytes_per_sample(f.bitDepth);
 }
 
 } // namespace
 
 void aoo_pcmLoad(const AooCodecHostInterface *iface) {
-    iface->registerCodec(kAooCodecPcm, &g_interface);
+    iface->registerCodec(&g_interface);
     // the PCM codec is always statically linked, so we can simply use the
     // internal log function and allocator
 }

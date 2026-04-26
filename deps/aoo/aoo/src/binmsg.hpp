@@ -1,6 +1,6 @@
 #pragma once
 
-#include "aoo/aoo.h"
+#include "aoo.h"
 #include "common/net_utils.hpp"
 #include "common/utils.hpp"
 
@@ -142,6 +142,7 @@ inline AooId binmsg_user(const AooByte *data, AooSize size) {
 // b) IPv6 address (16 bytes)
 inline int binmsg_write_relay(AooByte *buffer, AooSize size,
                               const aoo::ip_address& addr) {
+    assert(addr.valid());
     if (addr.type() == ip_address::IPv6) {
         if (size >= 20) {
             buffer[0] = kAooMsgTypeRelay | kAooBinMsgDomainBit;
@@ -169,7 +170,7 @@ inline int binmsg_read_relay(const AooByte *buffer, AooSize size, aoo::ip_addres
 
     if (buffer[1] == kAooBinMsgCmdRelayIPv6) {
         // IPv6
-#if AOO_USE_IPv6
+#if AOO_USE_IPV6
         if (size >= 20) {
             auto port = aoo::from_bytes<uint16_t>(buffer + 2);
             addr = ip_address(buffer + 4, 16, port, ip_address::IPv6);

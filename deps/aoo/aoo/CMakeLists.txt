@@ -1,159 +1,356 @@
-# compile time options
-option(AOO_CUSTOM_ALLOCATOR "build with custom allocator support" OFF)
-message(STATUS "Use custom allocator: ${AOO_CUSTOM_ALLOCATOR}")
+# AOO library
 
-set(AOO_PACKET_SIZE 512 CACHE STRING "default UDP packet size")
-message(STATUS "Default UDP packet size: ${AOO_PACKET_SIZE}")
+add_library(aoo
+    # public headers
+    "../include/aoo.h"
+    "../include/aoo_client.h"
+    "../include/aoo_client.hpp"
+    "../include/aoo_codec.h"
+    "../include/aoo_config.h"
+    "../include/aoo_controls.h"
+    "../include/aoo_defines.h"
+    "../include/aoo_events.h"
+    "../include/aoo_requests.h"
+    "../include/aoo_server.h"
+    "../include/aoo_server.hpp"
+    "../include/aoo_sink.h"
+    "../include/aoo_sink.hpp"
+    "../include/aoo_source.h"
+    "../include/aoo_source.hpp"
+    "../include/aoo_types.h"
+    "../include/codec/aoo_null.h"
+    "../include/codec/aoo_pcm.h"
+    # sources
+    "src/aoo.cpp"
+    "src/binmsg.hpp"
+    "src/data_frame.cpp"
+    "src/data_frame.hpp"
+    "src/detail.hpp"
+    "src/events.hpp"
+    "src/memory.hpp"
+    "src/packet_buffer.cpp"
+    "src/packet_buffer.hpp"
+    "src/resampler.cpp"
+    "src/resampler.hpp"
+    "src/rt_memory_pool.hpp"
+    "src/sink.cpp"
+    "src/sink.hpp"
+    "src/source.cpp"
+    "src/source.hpp"
+    "src/time_dll.hpp"
+    "src/codec/null.cpp"
+    "src/codec/pcm.cpp"
+    # common sources
+    "../common/bit_utils.hpp"
+    "../common/copyable_atomic.hpp"
+    "../common/lockfree.hpp"
+    "../common/log.hpp"
+    "../common/net_utils.cpp"
+    "../common/net_utils.hpp"
+    "../common/priority_queue.hpp"
+    "../common/sync.cpp"
+    "../common/sync.hpp"
+    "../common/tagged_integer.hpp"
+    "../common/time.cpp"
+    "../common/time.hpp"
+    "../common/utils.hpp"
+    # oscpack
+    $<TARGET_OBJECTS:aoo_oscpack>)
 
-set(AOO_MAX_PACKET_SIZE 4096 CACHE STRING "max. UDP packet size")
-message(STATUS "Max. UDP packet size: ${AOO_MAX_PACKET_SIZE}")
+target_include_directories(aoo PRIVATE ".")
 
-if (AOO_PACKET_SIZE GREATER AOO_MAX_PACKET_SIZE)
-    message(FATAL_ERROR "AOO_PACKET_SIZE must not exceed AOO_MAX_PACKET_SIZE")
+if (AOO_NET)
+    target_sources(aoo PRIVATE
+        "src/net/client.cpp"
+        "src/net/client.hpp"
+        "src/net/client_endpoint.cpp"
+        "src/net/client_endpoint.hpp"
+        "src/net/client_events.hpp"
+        "src/net/detail.cpp"
+        "src/net/detail.hpp"
+        "src/net/event.hpp"
+        "src/net/message_buffer.cpp"
+        "src/net/message_buffer.hpp"
+        "src/net/osc_stream_receiver.hpp"
+        "src/net/peer.cpp"
+        "src/net/peer.hpp"
+        "src/net/ping_timer.hpp"
+        "src/net/server.cpp"
+        "src/net/server.hpp"
+        "src/net/server_events.hpp"
+        "src/net/simulate.hpp"
+        "src/net/tcp_server.cpp"
+        "src/net/tcp_server.hpp"
+        "src/net/udp_server.cpp"
+        "src/net/udp_server.hpp")
+
+    target_sources(aoo PRIVATE $<TARGET_OBJECTS:aoo_md5>)
 endif()
 
-option(AOO_DYNAMIC_RESAMPLING "enable/disable dynamic resampling" OFF)
-message(STATUS "Use dynamic resampling: ${AOO_DYNAMIC_RESAMPLING}")
+if (AOO_USE_OPUS)
+    target_sources(aoo PRIVATE
+        "../include/codec/aoo_opus.h"
+        "src/codec/opus.cpp")
+endif()
 
-set(AOO_DLL_BANDWIDTH 0.0001 CACHE STRING "default DLL filter bandwidth")
-message(STATUS "Default DLL filter bandwidth: ${AOO_DLL_BANDWIDTH}")
-
-option(AOO_BINARY_DATA_MSG "use binary data messages" ON)
-message(STATUS "Use binary data message: ${AOO_BINARY_DATA_MSG}")
-
-# compile time debugging options
-option(AOO_DEBUG_MEMORY "debug memory usage" OFF)
-
-option(AOO_DEBUG_DATA "debug data transmission" OFF)
-
-option(AOO_DEBUG_RESEND "debug data retransmission" OFF)
-
-option(AOO_DEBUG_DLL "debug time DLL filter" OFF)
-
-option(AOO_DEBUG_TIMER "debug timer" OFF)
-
-option(AOO_DEBUG_RESAMPLER "debug resampler" OFF)
-
-option(AOO_DEBUG_JITTER_BUFFER "debug jitter buffer" OFF)
-
-option(AOO_DEBUG_STREAM_MESSAGE "debug jitter buffer" OFF)
-
-option(AOO_DEBUG_RELAY "debug relay" OFF)
-
-option(AOO_DEBUG_CLIENT_MESSAGE "debug client message" OFF)
-
-option(AOO_CLIENT_SIMULATE "network simulation in the client" OFF)
-
-set(OPTIONS
-    -DAOO_CUSTOM_ALLOCATOR=$<BOOL:${AOO_CUSTOM_ALLOCATOR}>
-    -DAOO_PACKET_SIZE=${AOO_PACKET_SIZE}
-    -DAOO_MAX_PACKET_SIZE=${AOO_MAX_PACKET_SIZE}
-    -DAOO_DYNAMIC_RESAMPLING=$<BOOL:${AOO_DYNAMIC_RESAMPLING}>
-    -DAOO_DLL_BANDWIDTH=${AOO_DLL_BANDWIDTH}
-    -DAOO_TIMER_TOLERANCE=${AOO_TIMER_TOLERANCE}
-    -DAOO_BINARY_DATA_MSG=$<BOOL:${AOO_BINARY_DATA_MSG}>
-    -DAOO_DEBUG_MEMORY=$<BOOL:${AOO_DEBUG_MEMORY}>
-    -DAOO_DEBUG_DATA=$<BOOL:${AOO_DEBUG_DATA}>
-    -DAOO_DEBUG_RESEND=$<BOOL:${AOO_DEBUG_RESEND}>
-    -DAOO_DEBUG_DLL=$<BOOL:${AOO_DEBUG_DLL}>
-    -DAOO_DEBUG_TIMER=$<BOOL:${AOO_DEBUG_TIMER}>
-    -DAOO_DEBUG_RESAMPLER=$<BOOL:${AOO_DEBUG_RESAMPLER}>
-    -DAOO_DEBUG_STREAM_MESSAGE=$<BOOL:${AOO_DEBUG_STREAM_MESSAGE}>
-    -DAOO_DEBUG_JITTER_BUFFER=$<BOOL:${AOO_DEBUG_JITTER_BUFFER}>
-    -DAOO_DEBUG_RELAY=$<BOOL:${AOO_DEBUG_RELAY}>
-    -DAOO_DEBUG_CLIENT_MESSAGE=$<BOOL:${AOO_DEBUG_CLIENT_MESSAGE}>
-    -DAOO_CLIENT_SIMULATE=$<BOOL:${AOO_CLIENT_SIMULATE}>
+target_compile_definitions(aoo PRIVATE
+    AOO_BUILD
+    # compile time options
+    AOO_CUSTOM_ALLOCATOR=$<BOOL:${AOO_CUSTOM_ALLOCATOR}>
+    AOO_MAX_PACKET_SIZE=${AOO_MAX_PACKET_SIZE}
+    AOO_DEBUG_MEMORY=$<BOOL:${AOO_DEBUG_MEMORY}>
+    AOO_DEBUG_DATA=$<BOOL:${AOO_DEBUG_DATA}>
+    AOO_DEBUG_RESEND=$<BOOL:${AOO_DEBUG_RESEND}>
+    AOO_DEBUG_DLL=$<BOOL:${AOO_DEBUG_DLL}>
+    AOO_DEBUG_RESAMPLER=$<BOOL:${AOO_DEBUG_RESAMPLER}>
+    AOO_DEBUG_STREAM_MESSAGE=$<BOOL:${AOO_DEBUG_STREAM_MESSAGE}>
+    AOO_DEBUG_JITTER_BUFFER=$<BOOL:${AOO_DEBUG_JITTER_BUFFER}>
+    AOO_DEBUG_RELAY=$<BOOL:${AOO_DEBUG_RELAY}>
+    AOO_DEBUG_CLIENT_MESSAGE=$<BOOL:${AOO_DEBUG_CLIENT_MESSAGE}>
+    AOO_CLIENT_SIMULATE=$<BOOL:${AOO_CLIENT_SIMULATE}>
+    # features
+    $<$<BOOL:${AOO_HAVE_ATOMIC_DOUBLE}>:AOO_HAVE_ATOMIC_DOUBLE>
+    $<$<BOOL:${AOO_HAVE_ATOMIC_INT64}>:AOO_HAVE_ATOMIC_INT64>
+    $<$<BOOL:${AOO_HAVE_PTHREAD_RWLOCK}>:AOO_HAVE_PTHREAD_RWLOCK>
 )
 
-set(INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/../include/aoo")
-set(COMMON "${CMAKE_CURRENT_SOURCE_DIR}/../common")
-set(DEPS "${CMAKE_CURRENT_SOURCE_DIR}/../deps")
-
-file(GLOB HEADERS "${INCLUDE}/*.h" "${INCLUDE}/*.hpp"
-     "${INCLUDE}/codec/aoo_pcm.h" "src/*.hpp" "${COMMON}/*.hpp")
-
-file(GLOB SOURCES "src/*.cpp" "src/codec/null.cpp" "src/codec/pcm.cpp" "${COMMON}/*.cpp")
-
-if (NOT AOO_SYSTEM_OSCPACK)
-    # only build required files in "osc" folder
-    set(OSC "${DEPS}/oscpack/osc")
-    list(APPEND HEADERS
-        "${OSC}/OscException.h"
-        "${OSC}/OscHostEndianness.h"
-        "${OSC}/OscOutboundPacketStream.h"
-        "${OSC}/OscReceivedElements.h"
-        "${OSC}/OscTypes.h")
-    list(APPEND SOURCES
-        "${OSC}/OscOutboundPacketStream.cpp"
-        "${OSC}/OscReceivedElements.cpp"
-        "${OSC}/OscTypes.cpp")
+target_link_libraries(aoo PRIVATE aoo_common)
+if (BUILD_SHARED_LIBS)
+    target_link_libraries(aoo PRIVATE aoo_binary)
 endif()
 
-if (AOO_USE_CODEC_OPUS)
-    list(APPEND HEADERS "${INCLUDE}/codec/aoo_opus.h")
-    list(APPEND SOURCES "src/codec/opus.cpp")
+# link with "libatomic" if available and necessary
+if (AOO_HAVE_LIB_ATOMIC AND
+        (NOT AOO_HAVE_ATOMIC_DOUBLE OR NOT AOO_HAVE_ATOMIC_INT64))
+    target_link_options(aoo PRIVATE -latomic)
 endif()
 
-if (AOO_NET)
-    file(GLOB NET_HEADERS "src/net/*.hpp")
+set_target_properties(aoo PROPERTIES
+    SOVERSION ${aoo_version_major}
+    VERSION ${aoo_version})
 
-    file(GLOB NET_SOURCES "src/net/*.cpp")
+# static library
+if (NOT BUILD_SHARED_LIBS AND MSVC)
+    # for MSVC we add a "_static" suffix to avoid a name clash
+    # with the "aoo.lib" import library
+    set_target_properties(aoo PROPERTIES OUTPUT_NAME "aoo_static")
+endif()
 
-    list(APPEND HEADERS ${NET_HEADERS})
-    list(APPEND SOURCES ${NET_SOURCES})
+add_library(Aoo::aoo ALIAS aoo)
 
-    if (NOT AOO_SYSTEM_MD5)
-        list(APPEND HEADERS "${DEPS}/md5/md5.h")
-        list(APPEND SOURCES "${DEPS}/md5/md5.c")
+#-------------------------------------------------------------
+# public properties (for libaoo consumers)
+#-------------------------------------------------------------
+
+target_compile_definitions(aoo PUBLIC
+    $<$<BOOL:${BUILD_SHARED_LIBS}>:AOO_SHARED>
+    AOO_NET=$<BOOL:${AOO_NET}>
+    AOO_USE_IPV6=$<BOOL:${AOO_USE_IPV6}>
+    AOO_USE_OPUS=$<BOOL:${AOO_USE_OPUS}>
+    AOO_SAMPLE_SIZE=${AOO_SAMPLE_SIZE})
+
+target_include_directories(aoo PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/aoo>)
+
+if (LINUX)
+    target_compile_options(aoo_common INTERFACE -pthread)
+    target_link_libraries(aoo PRIVATE -pthread)
+endif()
+
+if (MINGW)
+    if (NOT AOO_STATIC_RUNTIME)
+        target_link_libraries(aoo PRIVATE pthread)
+    endif()
+    if (AOO_USE_OPUS)
+        target_link_libraries(aoo PRIVATE ssp) # for fortified functions
     endif()
 endif()
 
-# AOO static library
-# NOTE: always build static library because we need it for Pd, SC, tests, etc.
-# AOO_BUILD_STATIC_LIBRARY only installs it
-option(AOO_BUILD_STATIC_LIBRARY "build static AOO library" ON)
-
-add_library(AOO_STATIC STATIC ${HEADERS} ${SOURCES})
-if (NOT MSVC)
-    # for MSVC we keep the "aoo_static" name to avoid name clash with
-    # "aoo.lib" import library
-    set_target_properties(AOO_STATIC PROPERTIES OUTPUT_NAME "aoo")
+if (APPLE)
+    target_link_libraries(aoo PRIVATE pthread)
 endif()
 
-target_compile_definitions(AOO_STATIC PUBLIC ${OPTIONS} -DAOO_STATIC)
-target_link_libraries(AOO_STATIC ${AOO_OSCPACK_LDFLAGS} ${AOO_OPUS_LDFLAGS})
+if (WIN32)
+    target_link_libraries(aoo PRIVATE ws2_32)
+endif()
+
+if (AOO_USE_OPUS)
+    target_link_libraries(aoo PUBLIC Opus::opus)
+endif()
+
+#-------------------------------------------------------------
+# AOO installation
+#-------------------------------------------------------------
+
+if (NOT AOO_INSTALL_LIBRARY)
+    return()
+endif()
+
+# install library files
+install(TARGETS aoo
+    EXPORT AooTargets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            COMPONENT Aoo_Development
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            COMPONENT Aoo_Runtime
+            NAMELINK_COMPONENT Aoo_Development
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+            COMPONENT Aoo_Runtime
+)
+
+if (NOT BUILD_SHARED_LIBS)
+    # for some reason the static library has aoo_common
+    # as a dependency, even though the latter does not
+    # contain any link options...
+    install(TARGETS aoo_common EXPORT AooTargets)
+endif()
+
+# TODO: install PDB file (Visual Studio)
+
+# install public headers
+install(FILES
+    "../include/aoo.h"
+    "../include/aoo_codec.h"
+    "../include/aoo_config.h"
+    "../include/aoo_controls.h"
+    "../include/aoo_defines.h"
+    "../include/aoo_events.h"
+    "../include/aoo_sink.h"
+    "../include/aoo_sink.hpp"
+    "../include/aoo_source.h"
+    "../include/aoo_source.hpp"
+    "../include/aoo_types.h"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/aoo"
+    COMPONENT Aoo_Development
+)
+
+# AOO_NET headers
 if (AOO_NET)
-    target_link_libraries(AOO_STATIC ${AOO_MD5_LDFLAGS})
+    install(FILES
+        "../include/aoo_client.h"
+        "../include/aoo_client.hpp"
+        "../include/aoo_requests.h"
+        "../include/aoo_server.h"
+        "../include/aoo_server.hpp"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/aoo"
+        COMPONENT Aoo_Development
+    )
 endif()
 
-# AOO shared library
-option(AOO_BUILD_SHARED_LIBRARY "build shared AOO library" ON)
+# codec headers
+install(FILES
+    "../include/codec/aoo_null.h"
+    "../include/codec/aoo_pcm.h"
+    $<$<BOOL:${AOO_USE_OPUS}>:${CMAKE_CURRENT_SOURCE_DIR}/../include/codec/aoo_opus.h>
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/aoo/codec"
+    COMPONENT Aoo_Development
+)
 
-if (AOO_BUILD_SHARED_LIBRARY)
-    add_library(AOO SHARED ${HEADERS} ${SOURCES})
-    set_target_properties(AOO PROPERTIES OUTPUT_NAME "aoo")
+# README and LICENSE
+install(FILES
+    "../README.md" "../INSTALL.md" "../LICENSE"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/aoo"
+)
 
-    target_compile_definitions(AOO PUBLIC -DAOO_BUILD ${OPTIONS})
+# documentation
+install(FILES
+    "../doc/aoo_protocol.md"
+    DESTINATION "${CMAKE_INSTALL_DOCDIR}"
+)
+
+#-------------------------------------------------------------
+# CMake package module
+#-------------------------------------------------------------
+if (AOO_INSTALL_CMAKE_CONFIG_MODULE)
+    include (CMakePackageConfigHelpers)
+
+    set(AOO_INSTALL_CMAKE_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/aoo"
+        CACHE STRING "Path to AOO CMake files")
+    mark_as_advanced(AOO_INSTALL_CMAKE_DIR)
+
+    if (BUILD_SHARED_LIBS)
+        set(type "Shared")
+    else()
+        set(type "Static")
+    endif()
+
+    install(EXPORT AooTargets
+            DESTINATION "${AOO_INSTALL_CMAKE_DIR}"
+            NAMESPACE Aoo::
+            FILE "Aoo${type}Targets.cmake"
+            COMPONENT Aoo_Development)
+
+    configure_package_config_file("../cmake/AooConfig.cmake.in"
+        "AooConfig.cmake"
+        INSTALL_DESTINATION "${AOO_INSTALL_CMAKE_DIR}")
+
+    write_basic_package_version_file("AooConfigVersion.cmake"
+        VERSION "${aoo_version}"
+        COMPATIBILITY SameMajorVersion)
+
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/AooConfig.cmake"
+                  "${CMAKE_CURRENT_BINARY_DIR}/AooConfigVersion.cmake"
+            DESTINATION "${AOO_INSTALL_CMAKE_DIR}")
+
+    if (AOO_USE_OPUS)
+        # needed for AooConfig.cmake so find_package(Opus) works in downstream projects
+        install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/FindOpus.cmake"
+                DESTINATION "${AOO_INSTALL_CMAKE_DIR}")
+    endif()
+endif()
+
+#-------------------------------------------------------------
+# pkg-config module
+#-------------------------------------------------------------
+if (AOO_INSTALL_PKG_CONFIG_MODULE)
+    set(AOO_INSTALL_PKG_CONFIG_DIR "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
+        CACHE STRING "Path to AOO pkg-config file")
+    mark_as_advanced(AOO_INSTALL_PKG_CONFIG_DIR)
+
+    # CFLAGS
+    if (AOO_NET)
+        set(PKGCONFIG_CFLAGS "${PKGCONFIG_CFLAGS} -DAOO_NET=1")
+    else()
+        set(PKGCONFIG_CFLAGS "${PKGCONFIG_CFLAGS} -DAOO_NET=0")
+    endif()
+
+    set(PKGCONFIG_CFLAGS "${PKGCONFIG_CFLAGS} -DAOO_SAMPLE_SIZE=${AOO_SAMPLE_SIZE}")
+
+    # NOTE: pkg-config files cannot really distinguish between shared and static
+    # libraries. Fortunately, We can get away with not defining AOO_SHARED for
+    # the shared library. On Linux and macOS this doesn't do anything; on Windows
+    # we only get a minor performance penalty by omitting the __declspec(dllimport).
+    # if (BUILD_SHARED_LIBS)
+    #     set(PKGCONFIG_CFLAGS "${PKGCONFIG_CFLAGS} -DAOO_SHARED")
+    # endif()
+
+    # LDFLAGS
+    if (LINUX)
+        set(PKGCONFIG_LDFLAGS_PRIVATE "${PKGCONFIG_LDFLAGS_PRIVATE} -pthread")
+    elseif (NOT MSVC)
+        set(PKGCONFIG_LDFLAGS_PRIVATE "${PKGCONFIG_LDFLAGS_PRIVATE} -lpthread")
+    endif()
+
     if (WIN32)
-        target_compile_definitions(AOO PUBLIC -DDLL_EXPORT)
-        target_link_libraries(AOO "ws2_32")
+        set(PKGCONFIG_LDFLAGS_PRIVATE "${PKGCONFIG_LDFLAGS_PRIVATE} -lws2_32")
     endif()
-    target_link_libraries(AOO ${AOO_OPUS_LDFLAGS} ${LIBS})
-endif()
 
-if (AOO_BUILD_SHARED_LIBRARY OR AOO_BUILD_STATIC_LIBRARY)
-    # install library files
-    if (AOO_BUILD_SHARED_LIBRARY)
-        list(APPEND TARGET_LIST AOO)
+    # Opus
+    if (AOO_USE_OPUS)
+        set(PKGCONFIG_REQUIRES "${PKGCONFIG_REQUIRES} opus")
+        set(PKGCONFIG_CFLAGS "${PKGCONFIG_CFLAGS} -DAOO_USE_OPUS=1")
+        if (MINGW)
+            set(PKGCONFIG_LDFLAGS_PRIVATE "${PKGCONFIG_LDFLAGS_PRIVATE} -lssp")
+        endif()
+     else()
+        set(PKGCONFIG_CFLAGS "${PKGCONFIG_CFLAGS} -DAOO_USE_OPUS=0")
     endif()
-    if (AOO_BUILD_STATIC_LIBRARY)
-        list(APPEND TARGET_LIST AOO_STATIC)
-    endif()
-    install(TARGETS ${TARGET_LIST}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-    # install public headers (note the trailing slash!)
-    install(DIRECTORY "${INCLUDE}/"
-            DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/aoo")
+
+    # pkg-config module
+    configure_file("../cmake/aoo.pc.in" "aoo.pc" @ONLY)
+
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/aoo.pc"
+        DESTINATION "${AOO_INSTALL_PKG_CONFIG_DIR}")
 endif()

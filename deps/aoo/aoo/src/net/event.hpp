@@ -1,6 +1,6 @@
 #pragma once
 
-#include "aoo/aoo_events.h"
+#include "aoo_events.h"
 
 #include <memory>
 #include <string>
@@ -33,24 +33,6 @@ struct ievent {
 };
 
 using event_ptr = std::unique_ptr<ievent>;
-
-struct error_event : ievent
-{
-    error_event(int32_t code, std::string msg)
-        : code_(code), msg_(std::move(msg)) {}
-
-    void dispatch(const event_handler& fn) const override {
-        AooEventError e;
-        AOO_EVENT_INIT(&e, AooEventError, errorMessage);
-        e.errorCode = code_;
-        e.errorMessage = msg_.c_str();
-
-        fn(e);
-    }
-
-    int32_t code_;
-    std::string msg_;
-};
 
 } // namespace net
 } // namespace aoo

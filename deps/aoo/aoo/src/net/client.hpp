@@ -4,9 +4,10 @@
 
 #pragma once
 
-#include "aoo/aoo_client.hpp"
+#include "aoo_client.hpp"
 
 #include "osc_stream_receiver.hpp"
+#include "udp_server.hpp"
 
 #include "common/lockfree.hpp"
 #include "common/net_utils.hpp"
@@ -16,20 +17,64 @@
 #include "detail.hpp"
 #include "event.hpp"
 #include "peer.hpp"
+#include "ping_timer.hpp"
+#if AOO_CLIENT_SIMULATE
+# include "simulate.hpp"
+#endif
 
-#include "oscpack/osc/OscOutboundPacketStream.h"
-#include "oscpack/osc/OscReceivedElements.h"
+#include "osc/OscOutboundPacketStream.h"
+#include "osc/OscReceivedElements.h"
 
+// these settings are used to maintain th TCP connection
+// to the AOO server.
+#ifndef AOO_CLIENT_SERVER_PING_INTERVAL
+# define AOO_CLIENT_SERVER_PING_INTERVAL 5.0
+#endif
+
+#ifndef AOO_CLIENT_SERVER_PROBE_TIME
+# define AOO_CLIENT_SERVER_PROBE_TIME 10.0
+#endif
+
+#ifndef AOO_CLIENT_SERVER_PROBE_INTERVAL
+# define AOO_CLIENT_SERVER_PROBE_INTERVAL 1.0
+#endif
+
+#ifndef AOO_CLIENT_SERVER_PROBE_COUNT
+# define AOO_CLIENT_SERVER_PROBE_COUNT 5
+#endif
+
+// these settings are used to establish and maintain
+// the UDP connection between peers.
+#ifndef AOO_CLIENT_PEER_PING_INTERVAL
+# define AOO_CLIENT_PEER_PING_INTERVAL 5.0
+#endif
+
+#ifndef AOO_CLIENT_PEER_PROBE_TIME
+# define AOO_CLIENT_PEER_PROBE_TIME 10.0
+#endif
+
+#ifndef AOO_CLIENT_PEER_PROBE_INTERVAL
+# define AOO_CLIENT_PEER_PROBE_INTERVAL 0.25
+#endif
+
+#ifndef AOO_CLIENT_PEER_PROBE_COUNT
+# define AOO_CLIENT_PEER_PROBE_COUNT 20
+#endif
+
+// UDP server ping interval (for maintaining the NAT mapping)
 #ifndef AOO_CLIENT_PING_INTERVAL
- #define AOO_CLIENT_PING_INTERVAL 5000
+# define AOO_CLIENT_PING_INTERVAL 5.0
 #endif
 
+// UDP server query interval (for obtaining the public IP address)
 #ifndef AOO_CLIENT_QUERY_INTERVAL
- #define AOO_CLIENT_QUERY_INTERVAL 100
+ #define AOO_CLIENT_QUERY_INTERVAL 0.25
 #endif
 
+// Default UDP server query timeout.
+// Can be overridden by the 'timeout' member in AooClientConnect.
 #ifndef AOO_CLIENT_QUERY_TIMEOUT
- #define AOO_CLIENT_QUERY_TIMEOUT 5000
+# define AOO_CLIENT_QUERY_TIMEOUT 5.0
 #endif
 
 #ifndef AOO_CLIENT_SIMULATE
@@ -38,9 +83,6 @@
 
 #include <vector>
 #include <unordered_map>
-#if AOO_CLIENT_SIMULATE
-# include <queue>
-#endif
 
 struct AooSource;
 struct AooSink;
@@ -70,15 +112,19 @@ struct message {
 
 class udp_client {
 public:
-    AooError setup(int port, AooSocketFlags flags);
+    AooError setup(Client& client, AooClientSettings& settings);
+
+    AooError receive(double timeout);
+
+    void stop() {
+        udp_server_.stop();
+    }
 
     int port() const { return port_; }
 
     ip_address::ip_type address_family() const { return address_family_; }
 
     bool use_ipv4_mapped() const { return use_ipv4_mapped_; }
-
-    // ip_address::ip_type type() const { return type_; }
 
     AooError handle_osc_message(Client& client, const AooByte *data, int32_t n,
                                 const ip_address& addr, int32_t type, AooMsgType onset);
@@ -88,9 +134,21 @@ public:
 
     void update(Client& client, const sendfn& fn, time_tag now);
 
-    void start_handshake(const ip_address& remote);
+    void start_handshake(const ip_address& remote, AooSeconds timeout);
 
     void queue_message(message&& msg);
+
+    static int send(void *user, const AooByte *data, AooInt32 size,
+                    const void *address, AooAddrSize addrlen, AooFlag) {
+        aoo::ip_address addr((const struct sockaddr *)address, addrlen);
+        auto& server = static_cast<udp_client *>(user)->udp_server_;
+        try {
+            return server.send(addr, data, size);
+        } catch (const socket_error& e) {
+            socket::set_last_error(e.code());
+            return -1;
+        }
+    }
 private:
     void send_server_message(const osc::OutboundPacketStream& msg, const sendfn& fn);
 
@@ -100,21 +158,30 @@ private:
 
     bool is_server_address(const ip_address& addr);
 
-    using scoped_lock = sync::scoped_lock<sync::shared_mutex>;
-    using scoped_shared_lock = sync::scoped_shared_lock<sync::shared_mutex>;
+    using unique_lock = sync::unique_lock<sync::shared_spinlock>;
+    using shared_lock = sync::shared_lock<sync::shared_spinlock>;
+    using scoped_lock = sync::scoped_lock<sync::shared_spinlock>;
+    using scoped_shared_lock = sync::scoped_shared_lock<sync::shared_spinlock>;
 
+    constexpr static float max_query_timeout = 30.0;
+
+    udp_server udp_server_;
     int port_ = 0;
+#if 0
+    AooSocketFlags socket_flags_ = 0;
+#endif
     ip_address::ip_type address_family_ = ip_address::Unspec;
     bool use_ipv4_mapped_ = false;
-
+    sync::shared_spinlock addr_lock_; // LATER replace with seqlock?
+    std::atomic<bool> start_handshake_{false};
+    bool got_address_ = false;
     ip_address remote_addr_;
-    ip_address public_addr_;
-    sync::shared_mutex mutex_; // LATER replace with sequence lock
 
-    double last_ping_time_ = 0;
-    std::atomic<double> first_ping_time_{0};
+    aoo::time_tag next_ping_time_;
+    aoo::time_tag query_deadline_;
+    std::atomic<float> query_timeout_{max_query_timeout};
 
-    using message_queue = aoo::unbounded_mpsc_queue<message>;
+    using message_queue = lockfree::concurrent_queue<message>;
     message_queue messages_;
 };
 
@@ -137,36 +204,90 @@ public:
 
     using command_ptr = std::unique_ptr<icommand>;
 
+    // pending request
+    struct callback_cmd : icommand
+    {
+        callback_cmd(AooResponseHandler cb, void *user)
+            : cb_(cb), user_(user) {}
+
+        virtual void handle_response(Client& client, const osc::ReceivedMessage& msg) = 0;
+
+        void reply(const AooResponse& response) const {
+            do_reply(kAooErrorNone, response);
+        }
+
+        void reply_error(AooError result, int32_t code = 0, const char *msg = "") const {
+            AooResponseError response;
+            response.type = kAooRequestError;
+            response.errorCode = code;
+            response.errorMessage = msg;
+            do_reply(result, reinterpret_cast<AooResponse&>(response));
+        }
+    protected:
+        virtual void do_reply(AooError result, const AooResponse& response) const = 0;
+
+        void callback(const AooRequest& request, AooError result, const AooResponse& response) const {
+            if (cb_) {
+                cb_(user_, &request, result, &response);
+            }
+        }
+    private:
+        AooResponseHandler cb_;
+        void *user_;
+    };
+
     //----------------------------------------------------------//
 
     Client();
 
     ~Client();
 
-    AooError AOO_CALL setup(AooUInt16 port, AooSocketFlags flags) override;
+    AooError AOO_CALL setup(AooClientSettings& settings) override;
 
-    AooError AOO_CALL run(AooBool nonBlocking) override;
+    AooError AOO_CALL run(AooSeconds timeout) override;
 
-    AooError AOO_CALL quit() override;
+    AooError AOO_CALL stop() override;
 
-    AooError AOO_CALL addSource(AooSource *src, AooId id) override;
+    AooError AOO_CALL send(AooSeconds timeout) override;
+
+    AooError AOO_CALL receive(AooSeconds timeout) override;
+
+    AooError AOO_CALL notify() override;
+
+    AooError AOO_CALL handlePacket(
+            const AooByte *data, AooInt32 n,
+            const void *addr, AooAddrSize len) override;
+
+    AooError AOO_CALL sendPacket(
+        const AooByte *data, AooInt32 n,
+        const void *addr, AooAddrSize len) override;
+
+    AooError AOO_CALL setEventHandler(
+            AooEventHandler fn, void *user, AooEventMode mode) override;
+
+    AooBool AOO_CALL eventsAvailable() override;
+
+    AooError AOO_CALL pollEvents() override;
+
+    AooError AOO_CALL addSource(AooSource *src) override;
 
     AooError AOO_CALL removeSource(AooSource *src) override;
 
-    AooError AOO_CALL addSink(AooSink *sink, AooId id) override;
+    AooError AOO_CALL removeAllSources() override;
+
+    AooError AOO_CALL addSink(AooSink *sink) override;
 
     AooError AOO_CALL removeSink(AooSink *sink) override;
 
-    AooError AOO_CALL connect(
-            const AooChar *hostName, AooInt32 port, const AooChar *password,
-            const AooData *metadata, AooResponseHandler cb, void *context) override;
+    AooError AOO_CALL removeAllSinks() override;
+
+    AooError AOO_CALL connect(const AooClientConnect& args,
+            AooResponseHandler cb, void *context) override;
 
     AooError AOO_CALL disconnect(AooResponseHandler cb, void *context) override;
 
-    AooError AOO_CALL joinGroup(
-            const AooChar *groupName, const AooChar *groupPwd, const AooData *groupMetadata,
-            const AooChar *userName, const AooChar *userPwd, const AooData *userMetadata,
-            const AooIpEndpoint *relayAddress, AooResponseHandler cb, void *context) override;
+    AooError AOO_CALL joinGroup(const AooClientJoinGroup& args,
+            AooResponseHandler cb, void *context) override;
 
     AooError AOO_CALL leaveGroup(AooId group, AooResponseHandler cb, void *context) override;
 
@@ -179,6 +300,10 @@ public:
     AooError AOO_CALL customRequest(const AooData& data, AooFlag flags,
                                     AooResponseHandler cb, void *context) override;
 
+    AooError AOO_CALL findGroupByName(const AooChar *name, AooId *id) override;
+
+    AooError AOO_CALL getGroupName(AooId group, AooChar *buffer, AooSize *size) override;
+
     AooError AOO_CALL findPeerByName(
             const AooChar *group, const AooChar *user, AooId *groupId,
             AooId *userId, void *address, AooAddrSize *addrlen) override;
@@ -190,27 +315,11 @@ public:
                                   AooChar *groupNameBuffer, AooSize *groupNameSize,
                                   AooChar *userNameBuffer, AooSize *userNameSize) override;
 
-    AooError AOO_CALL sendMessage(
-            AooId group, AooId user, const AooData& msg,
-            AooNtpTime timeStamp, AooFlag flags) override;
+    AooError AOO_CALL sendMessage(AooId group, AooId user, const AooData& msg,
+                                  AooNtpTime timeStamp, AooFlag flags) override;
 
-
-    AooError AOO_CALL handleMessage(
-            const AooByte *data, AooInt32 n,
-            const void *addr, AooAddrSize len) override;
-
-    AooError AOO_CALL send(AooSendFunc fn, void *user) override;
-
-    AooError AOO_CALL setEventHandler(
-            AooEventHandler fn, void *user, AooEventMode mode) override;
-
-    AooBool AOO_CALL eventsAvailable() override;
-
-    AooError AOO_CALL pollEvents() override;
-
-    AooError AOO_CALL sendRequest(
-            const AooRequest& request, AooResponseHandler callback,
-            void *user, AooFlag flags) override;
+    AooError AOO_CALL sendRequest(const AooRequest& request,
+                                  AooResponseHandler callback, void *user) override;
 
     AooError AOO_CALL control(
             AooCtl ctl, intptr_t index, void *ptr, size_t size) override;
@@ -226,7 +335,7 @@ public:
     struct connect_cmd;
     void perform(const connect_cmd& cmd);
 
-    int try_connect(const ip_host& server);
+    void do_connect(const ip_host& server, AooSeconds timeout);
 
     struct login_cmd;
     void perform(const login_cmd& cmd);
@@ -263,12 +372,14 @@ public:
     void handle_response(const custom_request_cmd& cmd, const osc::ReceivedMessage& msg);
 
     void perform(const message& msg, const sendfn& fn);
+    // interval between UDP server pings to maintain the NAT mapping.
+    // TODO: make a control?
+    double ping_interval() const { return AOO_CLIENT_PEER_PING_INTERVAL; }
+    // interval between UDP server queries to obtain public IP address.
+    // TODO: make a control?
+    double query_interval() const { return AOO_CLIENT_QUERY_INTERVAL; }
 
-    double ping_interval() const { return ping_interval_.load(); }
-
-    double query_interval() const { return query_interval_.load(); }
-
-    double query_timeout() const { return query_timeout_.load(); }
+    int32_t packet_size() const { return packet_size_.load(); }
 
     bool binary() const { return binary_.load(); }
 
@@ -276,23 +387,25 @@ public:
 
     void push_command(command_ptr cmd);
 
-    double elapsed_time_since(time_tag now) const {
-        return time_tag::duration(start_time_, now);
-    }
-
     client_state current_state() const { return state_.load(); }
 private:
     // networking
-    int socket_ = -1;
+    tcp_socket tcp_socket_;
     udp_client udp_client_;
-    osc_stream_receiver receiver_;
-    ip_address_list local_addr_;
-    std::vector<std::string> interfaces_;
-    int eventsocket_ = -1;
+    udp_socket event_socket_;
     std::atomic<bool> quit_{false};
-    bool server_relay_ = false;
+    sendfn udp_sendfn_;
+    AooReceiveFunc message_handler_ = nullptr;
+    void *user_data_ = nullptr;
+    osc_stream_receiver receiver_;
+    ip_address local_ipv4_addr_;
+#if AOO_USE_IPV6
+    ip_address global_ipv6_addr_;
+#endif
+    std::vector<std::string> interfaces_;
+    sync::mutex interface_mutex_; // TODO: replace with seqlock?
     std::vector<char> sendbuffer_;
-    sync::shared_mutex mutex_;
+    aoo::sync::event send_event_;
     // dependants
     struct source_desc {
         AooSource *source;
@@ -304,13 +417,11 @@ private:
         AooId id;
     };
     aoo::vector<sink_desc> sinks_;
+    sync::shared_mutex source_sink_mutex_;
     // peers
-    using peer_list = aoo::rcu_list<peer>;
+    using peer_list = lockfree::concurrent_list<peer>;
     using peer_lock = std::unique_lock<peer_list>;
     peer_list peers_;
-    // time
-    time_tag start_time_;
-    double last_ping_time_ = 0;
     // connect/login
     std::atomic<client_state> state_{client_state::disconnected};
     std::unique_ptr<connect_cmd> connection_;
@@ -321,83 +432,46 @@ private:
         AooId user_id;
         ip_address_list relay_list;
     };
-    std::vector<group_membership> memberships_;
+    std::vector<group_membership> groups_;
+    sync::mutex group_mutex_;
+    ping_timer server_ping_timer_;
     // commands
-    using command_queue = aoo::unbounded_mpsc_queue<command_ptr>;
+    using command_queue = lockfree::concurrent_queue<command_ptr>;
     command_queue commands_;
-    // pending request
-    struct callback_cmd : icommand
-    {
-        callback_cmd(AooResponseHandler cb, void *user)
-            : cb_(cb), user_(user) {}
-
-        virtual void handle_response(Client& client, const osc::ReceivedMessage& msg) = 0;
-
-        void reply(const AooResponse& response) const {
-            do_reply(kAooErrorNone, response);
-        }
-
-        void reply_error(AooError result, int32_t code = 0, const char *msg = "") const {
-            AooResponseError response;
-            response.type = kAooRequestError;
-            response.errorCode = code;
-            response.errorMessage = msg;
-            do_reply(result, reinterpret_cast<AooResponse&>(response));
-        }
-    protected:
-        virtual void do_reply(AooError result, const AooResponse& response) const = 0;
-
-        void callback(const AooRequest& request, AooError result, const AooResponse& response) const {
-            if (cb_) {
-                cb_(user_, &request, result, &response);
-            }
-        }
-    private:
-        AooResponseHandler cb_;
-        void *user_;
-    };
+    // pending requests
     using callback_cmd_ptr = std::unique_ptr<callback_cmd>;
     using request_map = std::unordered_map<AooId, callback_cmd_ptr>;
     request_map pending_requests_;
     AooId next_token_ = 0;
     // events
-    using event_queue = aoo::unbounded_mpsc_queue<event_ptr>;
-    event_queue events_;
-    AooEventHandler eventhandler_ = nullptr;
-    void *eventcontext_ = nullptr;
-    AooEventMode eventmode_ = kAooEventModeNone;
+    using event_queue = lockfree::concurrent_queue<event_ptr>;
+    event_queue event_queue_;
+    AooEventHandler event_handler_ = nullptr;
+    void *event_context_ = nullptr;
+    AooEventMode event_mode_ = kAooEventModeNone;
     // options
-    parameter<AooSeconds> ping_interval_{AOO_CLIENT_PING_INTERVAL * 0.001};
-    parameter<AooSeconds> query_interval_{AOO_CLIENT_QUERY_INTERVAL * 0.001};
-    parameter<AooSeconds> query_timeout_{AOO_CLIENT_QUERY_TIMEOUT * 0.001};
-    parameter<bool> binary_{AOO_CLIENT_BINARY_MSG};
-#if AOO_CLIENT_SIMULATE
-    parameter<float> sim_packet_loss_{0};
-    parameter<float> sim_packet_reorder_{0};
-    parameter<bool> sim_packet_jitter_{false};
-
-    struct netpacket {
-        std::vector<AooByte> data;
-        aoo::ip_address addr;
-        time_tag tt;
-        uint64_t sequence;
-
-        bool operator>(const netpacket& other) const {
-            // preserve FIFO ordering for packets with the same timestamp
-            if (tt == other.tt) {
-                return sequence > other.sequence;
-            } else {
-                return tt > other.tt;
-            }
-        }
+    AooPingSettings server_ping_settings_ {
+        AOO_CLIENT_SERVER_PING_INTERVAL,
+        AOO_CLIENT_SERVER_PROBE_TIME,
+        AOO_CLIENT_SERVER_PROBE_INTERVAL,
+        AOO_CLIENT_SERVER_PROBE_COUNT
     };
-    using packet_queue = std::priority_queue<netpacket, std::vector<netpacket>, std::greater<netpacket>>;
-    packet_queue packetqueue_;
-    uint64_t packet_sequence_ = 0;
+    sync::spinlock server_settings_lock_; // LATER use seqlock?
+    AooPingSettings peer_ping_settings_ {
+        AOO_CLIENT_PEER_PING_INTERVAL,
+        AOO_CLIENT_PEER_PROBE_TIME,
+        AOO_CLIENT_PEER_PROBE_INTERVAL,
+        AOO_CLIENT_PEER_PROBE_COUNT
+    };
+    sync::spinlock peer_settings_lock_; // LATER use seqlock?
+    parameter<int32_t> packet_size_{AOO_PACKET_SIZE};
+    parameter<bool> binary_{AOO_BINARY_FORMAT};
+#if AOO_CLIENT_SIMULATE
+    network_simulator simulate_;
 #endif
 
     // methods
-    bool wait_for_event(float timeout);
+    bool wait_for_event(double timeout);
 
     void receive_data();
 
@@ -421,18 +495,19 @@ private:
 
     void handle_peer_changed(const osc::ReceivedMessage& msg);
 
-    void handle_peer_add(const osc::ReceivedMessage& msg);
+    void handle_peer_join(const osc::ReceivedMessage& msg);
 
-    void handle_peer_remove(const osc::ReceivedMessage& msg);
+    void handle_peer_leave(const osc::ReceivedMessage& msg);
 
-    void on_socket_error(int err);
+    void handle_ping(const osc::ReceivedMessage& msg);
 
-    void on_exception(const char *what, const osc::Exception& err,
-                      const char *pattern = nullptr);
+    void handle_pong(const osc::ReceivedMessage& msg);
 
-    void close(bool silent = false);
+    void close_with_error(int err);
 
-    group_membership * find_group_membership(const std::string& name);
+    void close();
+
+    group_membership * find_group_membership(std::string_view name);
 
     group_membership * find_group_membership(AooId id);
 
@@ -441,10 +516,14 @@ public:
 
     struct connect_cmd : callback_cmd
     {
-        connect_cmd(const std::string& hostname, int port, const char * pwd,
-                    const AooData *metadata, AooResponseHandler cb, void *user)
+        // NB: pwd may be NULL!
+        connect_cmd(const AooClientConnect& args, AooResponseHandler cb, void *user)
             : callback_cmd(cb, user),
-              host_(hostname, port), pwd_(pwd ? pwd : ""), metadata_(metadata) {}
+              host_(args.hostName, args.port), pwd_(args.password ? args.password : ""),
+              metadata_(args.metadata) {
+            // 0: use default
+            timeout_ = args.timeout != 0.0 ? args.timeout : AOO_CLIENT_QUERY_TIMEOUT;
+        }
 
         void perform(Client& obj) override {
             obj.perform(*this);
@@ -455,19 +534,21 @@ public:
         }
 
         void do_reply(AooError result, const AooResponse& response) const override {
-            AooRequestConnect request;
-            AOO_REQUEST_INIT(&request, Connect, metadata);
-            request.address.hostName = host_.name.c_str();
-            request.address.port = host_.port;
-            request.password = pwd_.empty() ? nullptr : pwd_.c_str();
             AooData md { metadata_.type(), metadata_.data(), metadata_.size() };
-            request.metadata = (md.size > 0) ? &md : nullptr;
+
+            AooRequestConnect request {
+                AOO_REQUEST_INIT(Connect, metadata),
+                { host_.name.c_str(), (AooUInt16)host_.port },
+                (!pwd_.empty() ? pwd_.c_str() : nullptr),
+                (md.size > 0 ? &md : nullptr)
+            };
 
             callback((AooRequest&)request, result, response);
         }
         ip_host host_;
         std::string pwd_;
         aoo::metadata metadata_;
+        AooSeconds timeout_;
     };
 
     struct disconnect_cmd : callback_cmd
@@ -484,8 +565,7 @@ public:
         }
 
         void do_reply(AooError result, const AooResponse& response) const override {
-            AooRequestDisconnect request;
-            AOO_RESPONSE_INIT(&request, Disconnect, structSize);
+            AooRequestDisconnect request { AOO_REQUEST_INIT(Disconnect, structSize) };
 
             callback((AooRequest&)request, result, response);
         }
@@ -511,13 +591,14 @@ public:
 
     struct group_join_cmd : callback_cmd
     {
-        group_join_cmd(const std::string& group_name, const char * group_pwd, const AooData *group_md,
-                       const std::string& user_name, const char * user_pwd, const AooData *user_md,
-                       const ip_host& relay, AooResponseHandler cb, void *user)
+        // NB: group_pwd and user_pwd my be NULL!
+        group_join_cmd(const AooClientJoinGroup& args, AooResponseHandler cb, void *user)
             : callback_cmd(cb, user),
-              group_name_(group_name), group_pwd_(group_pwd ? group_pwd : ""), group_md_(group_md),
-              user_name_(user_name), user_pwd_(user_pwd ? user_pwd : ""), user_md_(user_md),
-              relay_(relay) {}
+              group_name_(args.groupName), group_pwd_(args.groupPassword ? args.groupPassword : ""),
+              group_md_(args.groupMetadata),
+              user_name_(args.userName), user_pwd_(args.userPassword ? args.userPassword : ""),
+              user_md_(args.userMetadata),
+              relay_(args.relayAddress ? *args.relayAddress : ip_host{}) {}
 
         void perform(Client& obj) override {
             obj.perform(*this);
@@ -528,27 +609,18 @@ public:
         }
 
         void do_reply(AooError result, const AooResponse& response) const override {
-            AooRequestGroupJoin request;
-            AOO_REQUEST_INIT(&request, GroupJoin, relayAddress);
-
-            request.groupName = group_name_.c_str();
-            request.groupPwd = group_pwd_.empty() ? nullptr : group_pwd_.c_str();
             AooData group_md { group_md_.type(), group_md_.data(), group_md_.size() };
-            request.groupMetadata = (group_md.size > 0) ? &group_md : nullptr;
-
-            request.userName = user_name_.c_str();
-            request.userPwd = user_pwd_.empty() ? nullptr : user_pwd_.c_str();
             AooData user_md { user_md_.type(), user_md_.data(), user_md_.size() };
-            request.userMetadata = (user_md.size > 0) ? &user_md : nullptr;
+            AooIpEndpoint relay { relay_.name.c_str(), (AooUInt16)relay_.port };
 
-            AooIpEndpoint relay;
-            if (relay_.valid()) {
-                relay.hostName = relay_.name.c_str();
-                relay.port = relay_.port;
-                request.relayAddress = &relay;
-            } else {
-                request.relayAddress = nullptr;
-            }
+            AooRequestGroupJoin request {
+                AOO_REQUEST_INIT(GroupJoin, relayAddress),
+                group_name_.c_str(), (group_pwd_.empty() ? nullptr : group_pwd_.c_str()),
+                kAooIdInvalid, ((group_md.size > 0) ? &group_md : nullptr),
+                user_name_.c_str(), (user_pwd_.empty() ? nullptr : user_pwd_.c_str()),
+                kAooIdInvalid, ((user_md.size > 0) ? &user_md : nullptr),
+                (relay_.valid() ? &relay : nullptr)
+            };
 
             callback((AooRequest&)request, result, response);
         }
@@ -575,9 +647,7 @@ public:
         }
 
         void do_reply(AooError result, const AooResponse& response) const override {
-            AooRequestGroupLeave request;
-            AOO_REQUEST_INIT(&request, GroupLeave, group);
-            request.group = group_;
+            AooRequestGroupLeave request { AOO_REQUEST_INIT(GroupLeave, group), group_ };
 
             callback((AooRequest&)request, result, response);
         }
@@ -599,12 +669,10 @@ public:
         }
 
         void do_reply(AooError result, const AooResponse& response) const override {
-            AooRequestGroupUpdate request;
-            AOO_REQUEST_INIT(&request, GroupUpdate, groupMetadata);
-            request.groupId = group_;
-            request.groupMetadata.type = md_.type();
-            request.groupMetadata.data = md_.data();
-            request.groupMetadata.size = md_.size();
+            AooRequestGroupUpdate request {
+                AOO_REQUEST_INIT(GroupUpdate, groupMetadata),
+                group_, { md_.type(), md_.data(), md_.size() }
+            };
 
             callback((AooRequest&)request, result, response);
         }
@@ -614,7 +682,8 @@ public:
 
     struct user_update_cmd : callback_cmd
     {
-        user_update_cmd(AooId group, const AooData &md, AooResponseHandler cb, void *context)
+        user_update_cmd(AooId group, const AooData &md,
+                        AooResponseHandler cb, void *context)
             : callback_cmd(cb, context),
               group_(group), md_(&md) {}
 
@@ -627,12 +696,10 @@ public:
         }
 
         void do_reply(AooError result, const AooResponse& response) const override {
-            AooRequestUserUpdate request;
-            AOO_REQUEST_INIT(&request, UserUpdate, userMetadata);
-            request.groupId = group_;
-            request.userMetadata.type = md_.type();
-            request.userMetadata.data = md_.data();
-            request.userMetadata.size = md_.size();
+            AooRequestUserUpdate request {
+                AOO_REQUEST_INIT(UserUpdate, userMetadata),
+                group_, kAooIdInvalid, { md_.type(), md_.data(), md_.size() }
+            };
 
             callback((AooRequest&)request, result, response);
         }
@@ -654,10 +721,14 @@ public:
             auto token = (it++)->AsInt32(); // skip
             auto result = (it++)->AsInt32();
             if (result == kAooErrorNone) {
-                AooResponseCustom response;
-                AOO_RESPONSE_INIT(&response, Custom, flags);
+                AooResponseCustom response; // default constructor
                 response.flags = (AooFlag)(it++)->AsInt32();
-                response.data = osc_read_metadata(it);
+                auto data = osc_read_metadata(it);
+                if (data) {
+                    response.data = *data;
+                } else {
+                    throw osc::MalformedMessageException("missing data");
+                }
 
                 reply((AooResponse&)response);
             } else {
@@ -668,17 +739,45 @@ public:
         }
 
         void do_reply(AooError result, const AooResponse& response) const override {
-            AooRequestCustom request;
-            AOO_REQUEST_INIT(&request, Custom, flags);
-            request.flags = flags_;
-            request.data.type = data_.type();
-            request.data.data = data_.data();
-            request.data.size = data_.size();
+            AooRequestCustom request {
+                AOO_REQUEST_INIT(Custom, flags),
+                { data_.type(), data_.data(), data_.size() }, flags_
+            };
 
             callback((AooRequest&)request, result, response);
         }
         aoo::metadata data_;
         AooFlag flags_;
+    };
+
+    struct packet_cmd : icommand
+    {
+        packet_cmd(const AooByte *data, size_t size,
+                   const ip_address& addr) {
+            // NB: the packet may be empty!
+            if (size > 0) {
+                data_ = (AooByte*)aoo::allocate(size);
+                memcpy(data_, data, size);
+                size_ = size;
+            }
+            addr_ = addr;
+        }
+
+        packet_cmd(const packet_cmd&) = delete;
+
+        ~packet_cmd() {
+            if (data_) {
+                aoo::deallocate(data_, size_);
+            }
+        }
+
+        void perform(Client& c) override {
+            c.udp_sendfn_(data_, size_, addr_);
+        }
+    private:
+        ip_address addr_;
+        AooByte *data_ = nullptr;
+        size_t size_ = 0;
     };
 };
 

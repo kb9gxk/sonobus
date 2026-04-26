@@ -1,11 +1,11 @@
 #include "Aoo.hpp"
 
-#include "aoo/aoo_source.hpp"
+#include "aoo_source.hpp"
 
-// for hardware buffer sizes up to 1024 @ 44.1 kHz
-#define DEFBUFSIZE 0.025
+// for hardware buffer sizes up to 2048 @ 44.1 kHz
+#define DEFBUFSIZE 0.05
 
-using OpenCmd = _OpenCmd<AooSource>;
+using OpenCmd = OpenCmd_<AooSource>;
 
 /*////////////////// AooSend ////////////////*/
 
@@ -24,16 +24,29 @@ public:
     AooSource * source() { return source_.get(); }
 
     bool addSink(const aoo::ip_address& addr, AooId id,
-                 bool active, int32_t channelOnset);
-    bool removeSink(const aoo::ip_address& addr, AooId id);
-    void removeAll();
+                 int32_t chan, bool active);
 
-    void setAccept(bool b){
-        accept_ = b;
+    bool removeSink(const aoo::ip_address& addr, AooId id);
+
+    void removeAllSinks();
+
+    void startStream(int32_t offset, const AooData* metadata) {
+        source_->startStream(offset, metadata);
+        running_ = true;
+    }
+
+    void stopStream(int32_t offset) {
+        source_->stopStream(offset);
+        running_ = false;
+    }
+
+    void setAutoInvite(bool b){
+        autoInvite_ = b;
     }
 private:
     AooSource::Ptr source_;
-    bool accept_ = true;
+    bool running_ = false;
+    bool autoInvite_ = true;
 };
 
 /*////////////////// AooSendUnit ////////////////*/
@@ -48,12 +61,15 @@ public:
         return static_cast<AooSend&>(*delegate_);
     }
 
-    int numChannels() const {
-        return numInputs() - channelOnset_;
-    }
+    int numChannels() const { return numChannels_; }
 private:
-    static const int channelOnset_ = 3;
+    static const int portIndex = 0;
+    static const int idIndex = 1;
+    static const int gateIndex = 2;
+    static const int channelIndex = 3;
+    static const int bufferIndex = 4;
 
-    bool playing_ = false;
+    int numChannels_ = 0;
+    float lastGate_ = 0;
 };
 

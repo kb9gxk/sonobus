@@ -8,9 +8,10 @@
 *.creator*
 *.files
 *.includes
-lib/src/lib/oscpack/examples**
-lib/src/lib/oscpack/tests**
-lib/src/lib/oscpack/ip**
+*.cflags
+*.cxxflags
+.qtc_**
+.vs**
+
 build**
-install**
-doxygen**
+install/**

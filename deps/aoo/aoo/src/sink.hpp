@@ -4,9 +4,9 @@
 
 #pragma once
 
-#include "aoo/aoo_sink.hpp"
+#include "aoo_sink.hpp"
 #if AOO_NET
-# include "aoo/aoo_client.hpp"
+# include "aoo_client.hpp"
 #endif
 
 #include "common/lockfree.hpp"
@@ -22,8 +22,8 @@
 #include "resampler.hpp"
 #include "time_dll.hpp"
 
-#include "oscpack/osc/OscOutboundPacketStream.h"
-#include "oscpack/osc/OscReceivedElements.h"
+#include "osc/OscOutboundPacketStream.h"
+#include "osc/OscReceivedElements.h"
 
 namespace aoo {
 
@@ -51,7 +51,8 @@ struct request {
     request_type type;
     union {
         struct {
-            AooNtpTime time;
+            AooNtpTime tt1;
+            AooNtpTime tt2;
         } pong;
         struct {
             AooId token;
@@ -100,7 +101,7 @@ enum class source_state {
     timeout
 };
 
-enum class stream_state {
+enum class stream_state : uint8_t {
     active,
     inactive,
     buffering
@@ -112,9 +113,10 @@ struct net_packet : data_packet {
 
 struct stream_message_header {
     stream_message_header *next;
-    double time;
-    AooDataType type;
-    AooSize size;
+    double time; // in samples
+    int16_t channel;
+    int16_t type; // must be signed because of kAooDataStreamTime
+    uint32_t size;
 };
 
 struct flat_stream_message {
@@ -122,15 +124,22 @@ struct flat_stream_message {
     char data[1];
 };
 
+constexpr AooDataType kAooDataStreamTime = -1;
+
+struct stream_time_message {
+    stream_message_header header;
+    AooNtpTime tt;
+};
+
 class Sink;
 
 class source_desc {
 public:
 #if AOO_NET
-    source_desc(const ip_address& addr, AooId id,
-                const ip_address& relay, double time);
+    source_desc(const ip_address& addr, const ip_address& relay,
+                AooId id, bool binary, double time);
 #else
-    source_desc(const ip_address& addr, AooId id, double time);
+    source_desc(const ip_address& addr, AooId id, bool binary, double time);
 #endif
 
     source_desc(const source_desc& other) = delete;
@@ -144,24 +153,22 @@ public:
 
     bool check_active(const Sink& s);
 
-    bool has_events() const {
-        return !eventqueue_.empty();
-    }
-
-    int32_t poll_events(Sink& s, AooEventHandler fn, void *user);
-
     AooError get_format(AooFormat& format, size_t size);
 
-    AooError codec_control(AooCtl ctl, void *data, AooSize size);
+    AooError codec_control(const AooChar *codec, AooCtl ctl,
+                           void *data, AooSize size);
 
     // methods
     void reset(const Sink& s);
 
-    AooError handle_start(const Sink& s, int32_t stream, int32_t format_id,
-                          const AooFormat& f, const AooByte *extension, int32_t size,
-                          const AooData *md);
+    AooError handle_start(const Sink& s, int32_t stream_id, int32_t seq_start,
+                          int32_t format_id, const AooFormat& f,
+                          const AooByte *ext_data, int32_t ext_size,
+                          aoo::time_tag tt, int32_t latency, int32_t codec_delay,
+                          const std::optional<AooData>& md, int32_t offset);
 
-    AooError handle_stop(const Sink& s, int32_t stream);
+    AooError handle_stop(const Sink& s, int32_t stream,
+                         int32_t last_seq, int32_t offset);
 
     AooError handle_decline(const Sink& s, int32_t token);
 
@@ -169,12 +176,12 @@ public:
 
     AooError handle_ping(const Sink& s, time_tag tt);
 
-    AooError handle_pong(const Sink& s, time_tag tt1, time_tag tt2);
+    AooError handle_pong(const Sink& s, time_tag tt1, time_tag tt2, time_tag tt3);
 
     void send(const Sink& s, const sendfn& fn);
 
     bool process(const Sink& s, AooSample **buffer, int32_t nsamples,
-                 AooStreamMessageHandler handler, void *user);
+                 time_tag tt, AooStreamMessageHandler handler, void *user);
 
     void invite(const Sink& s, AooId token, AooData *metadata);
 
@@ -191,19 +198,32 @@ private:
 
     void update(const Sink& s);
 
+    void check_latency(const Sink& s);
+
+    void on_underrun(const Sink& s);
+
     void handle_underrun(const Sink& s);
+
+    void handle_overrun(const Sink& s);
 
     bool add_packet(const Sink& s, const net_packet& d,
                     stream_stats& stats);
 
-    bool try_decode_block(const Sink& s, stream_stats& stats);
+    bool try_decode_block(const Sink& s, AooSample* buffer, stream_stats& stats);
 
     void check_missing_blocks(const Sink& s);
+
+    void sched_stream_message(stream_message_header *msg);
+
+    void dispatch_stream_messages(const Sink& s, int nsamples,
+                                  AooStreamMessageHandler fn, void *user);
+
+    void flush_packet_queue();
 
     // send messages
     void send_ping(const Sink&s, const sendfn& fn);
 
-    void send_pong(const Sink& s, AooNtpTime tt1, const sendfn& fn);
+    void send_pong(const Sink& s, time_tag tt1, time_tag tt2, const sendfn& fn);
 
     void send_start_request(const Sink& s, const sendfn& fn);
 
@@ -224,8 +244,16 @@ private:
     bool did_update_{false};
     bool underrun_{false};
     bool stopped_{false};
-    std::atomic<bool> binary_{false};
     double xrunblocks_ = 0;
+    aoo::time_tag stream_tt_;
+    aoo::time_tag local_tt_;
+    int32_t sample_offset_ = 0;
+    int32_t stream_start_ = 0;
+    int32_t source_latency_ = 0;
+    int32_t sink_latency_ = 0;
+    int32_t source_codec_delay_ = 0;
+    int32_t sink_codec_delay_ = 0;
+    int32_t buffer_latency_ = 0;
 
     std::atomic<source_state> state_{source_state::idle};
     rt_metadata_ptr metadata_;
@@ -247,22 +275,24 @@ private:
     // resampler
     dynamic_resampler resampler_;
     // packet queue and jitter buffer
-    aoo::unbounded_mpsc_queue<net_packet> packetqueue_;
-    jitter_buffer jitterbuffer_;
+    // NB: frame_allocator_ must come *before* jitter_buffer_!
+    data_frame_allocator frame_allocator_;
+    aoo::concurrent_queue<net_packet, false> packet_queue_;
+    jitter_buffer jitter_buffer_{frame_allocator_};
     int32_t latency_blocks_ = 0;
     int32_t latency_samples_ = 0;
     // stream messages
     stream_message_header *stream_messages_ = nullptr;
     double stream_samples_ = 0;
-    uint64_t process_samples_ = 0;
-    void reset_stream_messages();
+    int64_t process_samples_ = 0;
+    void reset_stream();
     // requests
-    aoo::unbounded_mpsc_queue<request> request_queue_;
+    aoo::concurrent_queue<request, true> request_queue_;
     void push_request(const request& r){
         request_queue_.push(r);
     }
-    aoo::unbounded_mpsc_queue<data_request> data_requests_;
-    void push_data_request(const data_request& r){
+    aoo::concurrent_queue<data_request, false> data_requests_;
+    void push_data_request(const data_request& r) {
     #if AOO_DEBUG_RESEND && 0
         LOG_DEBUG("AooSink: push data request (" << r.sequence
                   << " " << r.offset << " " << r.bitset << ")");
@@ -270,14 +300,10 @@ private:
         data_requests_.push(r);
     }
     // events
-    using event_queue = lockfree::unbounded_mpsc_queue<event_ptr, aoo::rt_allocator<event_ptr>>;
-    event_queue eventqueue_;
     using event_buffer = std::vector<event_ptr, aoo::allocator<event_ptr>>;
-    event_buffer eventbuffer_;
-    void send_event(const Sink& s, event_ptr e, AooThreadLevel level);
-    void flush_event_buffer(const Sink& s);
-    // memory
-    aoo::memory_list memory_;
+    event_buffer event_buffer_;
+    void queue_event(event_ptr e);
+    void flush_events(const Sink& s);
     // thread synchronization
     sync::shared_mutex mutex_; // LATER replace with a spinlock?
 };
@@ -316,29 +342,33 @@ public:
     AooError AOO_CALL control(AooCtl ctl, AooIntPtr index,
                               void *ptr, AooSize size) override;
 
-    AooError AOO_CALL codecControl(
-            AooCtl ctl, AooIntPtr index, void *data, AooSize size) override;
+    AooError AOO_CALL codecControl(const AooChar *codec, AooCtl ctl,
+            AooIntPtr index, void *data, AooSize size) override;
 
     // getters
     AooId id() const { return id_.load(); }
 
-    int32_t nchannels() const { return nchannels_; }
+    int32_t nchannels() const { return nchannels_.load(std::memory_order_relaxed); }
 
-    int32_t samplerate() const { return samplerate_; }
+    int32_t samplerate() const { return samplerate_.load(std::memory_order_relaxed); }
+
+    int32_t blocksize() const { return blocksize_.load(std::memory_order_relaxed); }
+
+    bool fixed_blocksize() const { return flags_.load(std::memory_order_relaxed) & kAooFixedBlockSize; }
 
     float elapsed_time() const { return elapsed_time_.load(std::memory_order_relaxed); }
 
     AooSampleRate real_samplerate() const { return realsr_.load(); }
 
-    bool dynamic_resampling() const { return dynamic_resampling_.load();}
+    bool dynamic_resampling() const { return dynamic_resampling_.load(); }
 
-    int32_t blocksize() const { return blocksize_; }
+    AooResampleMethod resample_method() const { return resample_method_.load(); }
 
     AooSeconds latency() const { return latency_.load(); }
 
     AooSeconds buffersize() const { return buffersize_.load(); }
 
-    int32_t packetsize() const { return packetsize_.load(); }
+    int32_t packet_size() const { return packet_size_.load(); }
 
     bool resend_enabled() const { return resend_.load(); }
 
@@ -352,55 +382,58 @@ public:
 
     AooSeconds invite_timeout() const { return invite_timeout_.load(); }
 
-    AooEventMode event_mode() const { return eventmode_; }
+    AooEventMode event_mode() const { return event_mode_; }
 
     void send_event(event_ptr e, AooThreadLevel level) const;
-
-    void call_event(event_ptr e, AooThreadLevel level) const;
 private:
     // settings
     parameter<AooId> id_;
-    int32_t nchannels_ = 0;
-    int32_t samplerate_ = 0;
-    int32_t blocksize_ = 0;
+    std::atomic<uint32_t> flags_{0};
+    std::atomic<int16_t> nchannels_{0};
+    std::atomic<int16_t> blocksize_{0};
+    std::atomic<int32_t> samplerate_{0};
 #if AOO_NET
     AooClient *client_ = nullptr;
 #endif
     // the sources
-    using source_list = aoo::rcu_list<source_desc>;
+    using source_list = aoo::concurrent_list<source_desc>;
     using source_lock = std::unique_lock<source_list>;
     source_list sources_;
     sync::mutex source_mutex_;
     // timing
-    parameter<AooSampleRate> realsr_{0};
     time_dll dll_;
-    std::atomic<AooNtpTime> start_time_{0};
+    parameter<AooSampleRate> realsr_{0};
+    AooNtpTime start_tt_{0};
     std::atomic<float> elapsed_time_ = 0;
+    std::atomic<bool> need_reset_timer_{false};
     void reset_timer() {
-        start_time_.store(0);
+        need_reset_timer_.store(true);
     }
     // options
     parameter<float> latency_{ AOO_SINK_LATENCY };
     parameter<float> buffersize_{ 0 };
     parameter<float> resend_interval_{ AOO_RESEND_INTERVAL };
     parameter<float> ping_interval_{ AOO_PING_INTERVAL };
-    parameter<int32_t> packetsize_{ AOO_PACKET_SIZE };
+    parameter<int32_t> packet_size_{ AOO_PACKET_SIZE };
     parameter<int32_t> resend_limit_{ AOO_RESEND_LIMIT };
     parameter<float> source_timeout_{ AOO_SOURCE_TIMEOUT };
     parameter<float> invite_timeout_{ AOO_INVITE_TIMEOUT };
     parameter<float> dll_bandwidth_{ AOO_DLL_BANDWIDTH };
-    parameter<bool> resend_{AOO_RESEND_DATA};
+    parameter<bool> resend_{ AOO_RESEND_DATA };
     parameter<bool> dynamic_resampling_{ AOO_DYNAMIC_RESAMPLING };
+    parameter<bool> binary_{ AOO_BINARY_FORMAT };
+    parameter<char> resample_method_{ AOO_RESAMPLE_MODE };
+
     // events
-    using event_queue = lockfree::unbounded_mpsc_queue<event_ptr, aoo::rt_allocator<event_ptr>>;
-    mutable event_queue eventqueue_;
-    AooEventHandler eventhandler_ = nullptr;
-    void *eventcontext_ = nullptr;
-    AooEventMode eventmode_ = kAooEventModeNone;
+    using event_queue = lockfree::concurrent_queue<event_ptr, true, aoo::rt_allocator<event_ptr>>;
+    mutable event_queue event_queue_;
+    AooEventHandler event_handler_ = nullptr;
+    void *event_context_ = nullptr;
+    AooEventMode event_mode_ = kAooEventModeNone;
     // requests
-    aoo::unbounded_mpsc_queue<source_request> requestqueue_;
-    void push_request(const source_request& r){
-        requestqueue_.push(r);
+    aoo::concurrent_queue<source_request, true> request_queue_;
+    void push_request(const source_request& r) {
+        request_queue_.push(r);
     }
     void dispatch_requests();
 

@@ -1,180 +1,117 @@
 #include "Aoo.hpp"
 
-#include "aoo/codec/aoo_null.h"
-#include "aoo/codec/aoo_pcm.h"
-#if AOO_USE_CODEC_OPUS
-#include "aoo/codec/aoo_opus.h"
+#include "codec/aoo_null.h"
+#include "codec/aoo_pcm.h"
+#if AOO_USE_OPUS
+#include "codec/aoo_opus.h"
 #endif
-
-#include "common/time.hpp"
 
 #include <unordered_map>
 #include <vector>
 
-static InterfaceTable *ft;
+namespace {
 
-namespace rt {
-    InterfaceTable* interfaceTable;
+InterfaceTable *ft;
+
+aoo::sync::mutex gClientSocketMutex;
+aoo::udp_socket gClientSocket;
+int gClientPort;
+aoo::ip_address::ip_type gClientSocketType;
+std::unordered_map<int, aoo::ip_address> gReplyAddrMap;
+
+// Called from NRT threads(s)
+bool registerClient(int port, const aoo::ip_address& addr) {
+    std::lock_guard lock(gClientSocketMutex);
+    if (auto it = gReplyAddrMap.find(port); it != gReplyAddrMap.end()) {
+        if (it->second == addr) {
+#if 0
+            LOG_WARNING("aoo: client " << addr << " for port " << port
+                         << " already registered!");
+#endif
+            return true;
+        } else {
+            LOG_ERROR("aoo: port " << port
+                      << " already registered by client " << it->second);
+            return false;
+        }
+    } else {
+        gReplyAddrMap[port] = addr;
+        return true;
+    }
+}
+
+// Called from NRT thread(s)
+bool unregisterClient(int port, const aoo::ip_address& addr) {
+    std::lock_guard lock(gClientSocketMutex);
+    if (auto it = gReplyAddrMap.find(port); it != gReplyAddrMap.end()) {
+        if (it->second == addr) {
+            gReplyAddrMap.erase(it);
+            return true;
+        } else {
+            LOG_ERROR("aoo: cannot unregister client " << addr << " for port "
+                      << port << " - wrong client (" << it->second << ")");
+            return false;
+        }
+    } else {
+        LOG_ERROR("aoo: cannot unregister client " << addr
+                  << " for port " << port << " - port not found!");
+        return false;
+    }
 }
 
 // TODO: honor Server verbosity
-static void AOO_CALL SCLog(AooLogLevel level, const char *msg) {
-    if (level == kAooLogLevelError) {
-        Print("ERROR: %s", msg);
-    } else if (level == kAooLogLevelWarning) {
-        Print("WARNING: %s", msg);
+void AOO_CALL SCLog(AooLogLevel level, const char *msg) {
+    switch (level) {
+    case kAooLogLevelError:
+        Print("ERROR: %s\n", msg);
+        break;
+    case kAooLogLevelWarning:
+        Print("WARNING: %s\n", msg);
+        break;
+    case kAooLogLevelInfo:
+        Print("%s\n", msg);
+        break;
+    case kAooLogLevelDebug:
+        Print("DEBUG: %s\n", msg);
+        break;
+    default:
+        Print("VERBOSE: %s\n", msg);
+        break;
+    }
+}
+
+}
+
+/*/////////////////// Reply ///////////////////////*/
+
+aoo::ip_address findReplyAddr(int port) {
+    std::lock_guard lock(gClientSocketMutex);
+    if (auto it = gReplyAddrMap.find(port); it != gReplyAddrMap.end()) {
+        return it->second;
     } else {
-        Print("%s", msg);
+        return aoo::ip_address{};
     }
 }
 
-/*////////////////// Replies //////////////////////*/
-
-namespace {
-
-using shared_lock = aoo::sync::shared_lock<aoo::sync::shared_mutex>;
-using unique_lock = aoo::sync::unique_lock<aoo::sync::shared_mutex>;
-
-int gClientSocket = -1;
-aoo::ip_address::ip_type gClientSocketType = aoo::ip_address::Unspec;
-aoo::sync::mutex gClientSocketMutex;
-
-using ClientList = std::vector<aoo::ip_address>;
-std::unordered_map<World *, ClientList> gClientMap;
-aoo::sync::shared_mutex gClientMutex;
-
-struct ClientCmd {
-    int id;
-    int port;
-    char host[1];
-};
-
-bool registerClient(World *world, void *cmdData){
-    LOG_DEBUG("register client");
-    auto data = (ClientCmd *)cmdData;
-
-    aoo::ip_address addr(data->host, data->port, gClientSocketType);
-
-    unique_lock lock(gClientMutex);
-
-    auto& clientList = gClientMap[world];
-    bool found = false;
-    for (auto& client : clientList){
-        if (client == addr){
-            LOG_WARNING("client already registered!");
-            found = true;
-            break;
+void sendReply(int port, const char *data, size_t size) {
+    std::lock_guard lock(gClientSocketMutex);
+    try {
+        if (auto it = gReplyAddrMap.find(port); it != gReplyAddrMap.end()) {
+            gClientSocket.send(data, size, it->second);
+        } else {
+            LOG_ERROR("aoo: could not send reply: could not find address");
         }
-    }
-    if (!found){
-        clientList.push_back(addr);
-    }
-
-    char buf[256];
-    osc::OutboundPacketStream msg(buf, 256);
-    msg << osc::BeginMessage("/aoo/register") << data->id << osc::EndMessage;
-
-    LOG_DEBUG("send client reply");
-    aoo::socket_sendto(gClientSocket, msg.Data(), msg.Size(), addr);
-
-    return true;
-}
-
-bool unregisterClient(World *world, void *cmdData){
-    auto data = (ClientCmd *)cmdData;
-
-    // sclang is IPv4 only
-    aoo::ip_address addr(data->host, data->port, gClientSocketType);
-
-    unique_lock lock(gClientMutex);
-
-    auto& clientList = gClientMap[world];
-    for (auto it = clientList.begin(); it != clientList.end(); ++it){
-        if (*it == addr){
-            clientList.erase(it);
-            return true;
-        }
-    }
-
-    LOG_WARNING("couldn't unregister client - not found!");
-
-    return false;
-}
-
-void aoo_register(World* world, void* user,
-                  sc_msg_iter* args, void* replyAddr)
-{
-    auto host = args->gets("");
-    auto port = args->geti();
-    auto id = args->geti();
-
-    auto len = strlen(host) + 1;
-
-    auto cmdData = CmdData::create<ClientCmd>(world, len);
-    if (cmdData){
-        cmdData->id = id;
-        cmdData->port = port;
-        memcpy(cmdData->host, host, len);
-
-        DoAsynchronousCommand(world, replyAddr, "/aoo_register",
-                              cmdData, registerClient, 0, 0,
-                              CmdData::free<ClientCmd>, 0, 0);
+    } catch (const aoo::socket_error& e) {
+        LOG_ERROR("aoo: could not send reply: " << e.what());
     }
 }
 
-void aoo_unregister(World* world, void* user,
-                  sc_msg_iter* args, void* replyAddr)
-{
-    auto host = args->gets("");
-    auto port = args->geti();
-
-    auto len = strlen(host) + 1;
-
-    auto cmdData = CmdData::create<ClientCmd>(world, len);
-    if (cmdData){
-        cmdData->port = port;
-        memcpy(cmdData->host, host, len);
-
-        DoAsynchronousCommand(world, replyAddr, "/aoo_unregister",
-                              cmdData, unregisterClient, 0, 0,
-                              CmdData::free<ClientCmd>, 0, 0);
-    }
-}
-
-struct OscMsgCommand {
-    size_t size;
-    char data[1];
-};
-
-} // namespace
-
-void sendMsgNRT(World *world, const char *data, int32_t size){
-    shared_lock lock(gClientMutex);
-    for (auto& addr : gClientMap[world]){
-        // sendMsgNRT can be called from different threads
-        // (NRT thread and network receive thread)
-        aoo::sync::scoped_lock<aoo::sync::mutex> l(gClientSocketMutex);
-        aoo::socket_sendto(gClientSocket, data, size, addr);
-    }
-}
-
-void sendMsgRT(World *world, const char *data, int32_t size){
-    auto cmd = CmdData::create<OscMsgCommand>(world, size);
-    if (cmd){
-        cmd->size = size;
-        memcpy(cmd->data, data, size);
-
-        auto sendMsg = [](World *world, void *cmdData){
-            auto cmd = (OscMsgCommand *)cmdData;
-
-            sendMsgNRT(world, cmd->data, cmd->size);
-
-            return false; // done
-        };
-
-        DoAsynchronousCommand(world, 0, 0, cmd, sendMsg, 0, 0, &RTFree, 0, 0);
-    } else {
-        LOG_ERROR("RTAlloc() failed!");
+void sendReply(const aoo::ip_address& addr, const osc::OutboundPacketStream& msg) {
+    std::lock_guard lock(gClientSocketMutex); // lock!
+    try {
+        gClientSocket.send(msg.Data(), msg.Size(), addr);
+    } catch (const aoo::socket_error& e) {
+        LOG_ERROR("aoo: could not send reply: " << e.what());
     }
 }
 
@@ -228,6 +165,45 @@ AooDelegate::~AooDelegate() {
     LOG_DEBUG("~AooDelegate");
 }
 
+osc::OutboundPacketStream& AooDelegate::beginReply(
+    osc::OutboundPacketStream& msg, const char *cmd) {
+    msg << osc::BeginMessage(cmd) << owner_->mParent->mNode.mID << owner_->mParentIndex;
+    return msg;
+}
+
+void AooDelegate::sendMsgRT(osc::OutboundPacketStream &msg) {
+    struct OscMsgCommand {
+        int port;
+        int size;
+        char data[1];
+    };
+
+    msg << osc::EndMessage;
+
+    auto cmd = (OscMsgCommand*)RTAlloc(world_, sizeof(OscMsgCommand) + msg.Size());
+    if (!cmd) {
+        LOG_ERROR("RTAlloc() failed!");
+        return;
+    }
+    cmd->port = node_->port();
+    cmd->size = msg.Size();
+    memcpy(cmd->data, msg.Data(), msg.Size());
+
+    auto sendfn = [](FifoMsg* msg) {
+        auto cmd = (OscMsgCommand*)msg->mData;
+        sendReply(cmd->port, cmd->data, cmd->size);
+    };
+
+    auto freefn = [](FifoMsg* msg) {
+        msg->mWorld->ft->fRTFree(msg->mWorld, msg->mData);
+    };
+
+    FifoMsg fifoMsg;
+    fifoMsg.Set(world_, sendfn, freefn, cmd);
+
+    SendMsgFromRT(world_, fifoMsg);
+}
+
 void AooDelegate::doCmd(CmdData *cmdData, AsyncStageFn stage2,
     AsyncStageFn stage3, AsyncStageFn stage4, AsyncFreeFn cleanup) {
     // so we don't have to always check the return value of makeCmdData
@@ -236,35 +212,6 @@ void AooDelegate::doCmd(CmdData *cmdData, AsyncStageFn stage2,
         DoAsynchronousCommand(world_, 0, 0, cmdData,
                               stage2, stage3, stage4, cleanup, 0, 0);
     }
-}
-
-void AooDelegate::beginReply(osc::OutboundPacketStream &msg, const char *cmd, int replyID){
-    msg << osc::BeginMessage(cmd) << owner_->mParent->mNode.mID << owner_->mParentIndex << replyID;
-}
-
-void AooDelegate::beginEvent(osc::OutboundPacketStream &msg, const char *event)
-{
-    msg << osc::BeginMessage("/aoo/event")
-        << owner_->mParent->mNode.mID << owner_->mParentIndex << event;
-}
-
-void AooDelegate::beginEvent(osc::OutboundPacketStream &msg, const char *event,
-                             const AooEndpoint& ep)
-{
-    aoo::ip_address addr((const sockaddr *)ep.address, ep.addrlen);
-    msg << osc::BeginMessage("/aoo/event")
-        << owner_->mParent->mNode.mID << owner_->mParentIndex
-        << event << addr.name() << addr.port() << ep.id;
-}
-
-void AooDelegate::sendMsgRT(osc::OutboundPacketStream &msg){
-    msg << osc::EndMessage;
-    ::sendMsgRT(world_, msg);
-}
-
-void AooDelegate::sendMsgNRT(osc::OutboundPacketStream &msg){
-    msg << osc::EndMessage;
-    ::sendMsgNRT(world_, msg);
 }
 
 /*////////////////// Helper functions ///////////////*/
@@ -276,7 +223,7 @@ void AooDelegate::sendMsgNRT(osc::OutboundPacketStream &msg){
 // and it should be more or less ok for libscsynth.
 uint64_t getOSCTime(World *world){
     thread_local AooNtpTime time;
-    thread_local int lastBuffer{-1};
+    thread_local int lastBuffer = -1;
 
     if (lastBuffer != world->mBufCounter){
         time = aoo_getCurrentNtpTime();
@@ -297,7 +244,7 @@ static int32_t getFormatParam(sc_msg_iter *args, const char *name, int32_t def)
     if (args->remain() > 0){
         if (args->nextTag() == 's'){
             auto s = args->gets();
-            if (strcmp(s, "_")){
+            if (strcmp(s, "auto")){
                 LOG_ERROR("bad " << name << " argument " << s
                           << ", using " << def);
             }
@@ -311,46 +258,41 @@ static int32_t getFormatParam(sc_msg_iter *args, const char *name, int32_t def)
 bool parseFormat(const AooUnit& unit, int defNumChannels,
                  sc_msg_iter *args, AooFormatStorage &f)
 {
-    const char *codec = args->gets("");
+    std::string_view codec = args->gets("");
 
-    if (!strcmp(codec, kAooCodecNull)) {
+    if (codec == kAooCodecNull) {
         auto numChannels = getFormatParam(args, "channels", defNumChannels);
         auto blockSize = getFormatParam(args, "blocksize", unit.bufferSize());
         auto sampleRate = getFormatParam(args, "samplerate", unit.sampleRate());
 
         AooFormatNull_init((AooFormatNull *)&f, numChannels, sampleRate, blockSize);
-    } else if (!strcmp(codec, kAooCodecPcm)){
+    } else if (codec == kAooCodecPcm) {
         auto numChannels = getFormatParam(args, "channels", defNumChannels);
         auto blockSize = getFormatParam(args, "blocksize", unit.bufferSize());
         auto sampleRate = getFormatParam(args, "samplerate", unit.sampleRate());
 
-        int nbytes = getFormatParam(args, "bitdepth", 4);
-        AooPcmBitDepth bitdepth;
-        switch (nbytes){
-        case 1:
-            bitdepth = kAooPcmInt8;
-            break;
-        case 2:
-            bitdepth = kAooPcmInt16;
-            break;
-        case 3:
-            bitdepth = kAooPcmInt24;
-            break;
-        case 4:
-            bitdepth = kAooPcmFloat32;
-            break;
-        case 8:
-            bitdepth = kAooPcmFloat64;
-            break;
-        default:
-            LOG_ERROR("bad bitdepth argument " << nbytes);
-            return false;
+        AooPcmBitDepth bitdepth = kAooPcmFloat32;
+        if (args->remain() > 0) {
+            std::string_view b = args->gets("");
+            if (b == "int8") {
+                bitdepth = kAooPcmInt8;
+            } else if (b == "int16") {
+                bitdepth = kAooPcmInt16;
+            } else if (b == "int24") {
+                bitdepth = kAooPcmInt24;
+            } else if (b == "float32") {
+                bitdepth = kAooPcmFloat32;
+            } else if (b == "float64") {
+                bitdepth = kAooPcmFloat64;
+            } else if (b != "auto") {
+                LOG_ERROR("bad bit depth argument, using float32");
+            }
         }
 
         AooFormatPcm_init((AooFormatPcm *)&f, numChannels, sampleRate, blockSize, bitdepth);
     }
-#if AOO_USE_CODEC_OPUS
-    else if (!strcmp(codec, kAooCodecOpus)){
+#if AOO_USE_OPUS
+    else if (codec == kAooCodecOpus) {
         auto numChannels = getFormatParam(args, "channels", defNumChannels);
         auto blockSize = getFormatParam(args, "blocksize", 480); // 10ms
         auto sampleRate = getFormatParam(args, "samplerate", 48000);
@@ -358,12 +300,12 @@ bool parseFormat(const AooUnit& unit, int defNumChannels,
         // application type ("auto", "audio", "voip", "lowdelay")
         opus_int32 applicationType;
         if (args->remain() > 0){
-            auto type = args->gets("");
-            if (!strcmp(type, "_") || !strcmp(type, "audio")){
+            std::string_view type = args->gets("");
+            if (type == "auto" || type == "audio") {
                 applicationType = OPUS_APPLICATION_AUDIO;
-            } else if (!strcmp(type, "voip")){
+            } else if (type == "voip") {
                 applicationType = OPUS_APPLICATION_VOIP;
-            } else if (!strcmp(type, "lowdelay")){
+            } else if (type == "lowdelay") {
                 applicationType = OPUS_APPLICATION_RESTRICTED_LOWDELAY;
             } else {
                 LOG_ERROR("unsupported application type '" << type << "'");
@@ -389,37 +331,36 @@ bool serializeFormat(osc::OutboundPacketStream& msg, const AooFormat& f)
     msg << f.codecName << (int32_t)f.numChannels
         << (int32_t)f.blockSize << (int32_t)f.sampleRate;
 
-    if (!strcmp(f.codecName, kAooCodecNull)) {
+    std::string_view codec = f.codecName;
+    if (codec == kAooCodecNull) {
         return true;
-    } else if (!strcmp(f.codecName, kAooCodecPcm)){
+    } else if (codec == kAooCodecPcm) {
         // pcm <channels> <blocksize> <samplerate> <bitdepth>
         auto& fmt = (AooFormatPcm &)f;
-        int nbytes;
         switch (fmt.bitDepth){
         case kAooPcmInt8:
-            nbytes = 1;
+            msg << "int8";
             break;
         case kAooPcmInt16:
-            nbytes = 2;
+            msg << "int16";
             break;
         case kAooPcmInt24:
-            nbytes = 3;
+            msg << "int24";
             break;
         case kAooPcmFloat32:
-            nbytes = 4;
+            msg << "float32";
             break;
         case kAooPcmFloat64:
-            nbytes = 8;
+            msg << "float64";
             break;
         default:
-            LOG_ERROR("serializeFormat: bad bitdepth argument " << fmt.bitDepth);
+            LOG_ERROR("serializeFormat: bad bit depth argument " << fmt.bitDepth);
             return false;
         }
-        msg << nbytes;
         return true;
     }
-#if AOO_USE_CODEC_OPUS
-    else if (!strcmp(f.codecName, kAooCodecOpus)){
+#if AOO_USE_OPUS
+    else if (codec == kAooCodecOpus) {
         // opus <channels> <blocksize> <samplerate> <application>
         auto& fmt = (AooFormatOpus &)f;
 
@@ -448,6 +389,109 @@ bool serializeFormat(osc::OutboundPacketStream& msg, const AooFormat& f)
     }
 }
 
+bool serializeData(osc::OutboundPacketStream& msg, const AooData* data) {
+    if (data) {
+        msg << data->type << osc::Blob(data->data, data->size);
+    } else {
+        msg << osc::Nil << osc::Nil;
+    }
+    return true;
+}
+
+std::optional<AooData> parseData(sc_msg_iter *args) {
+    if (auto type = args->geti(-1); type >= 0) {
+        if (args->nextTag() == 'b') {
+            AooData data;
+            data.type = type;
+            data.size = args->getbsize();
+            data.data = (const AooByte *)(args->rdpos + 4);
+            args->skipb();
+            return data;
+        }
+    }
+    args->geti(); // skip second argument
+    return std::nullopt;
+}
+
+/*///////////////// Commands ///////////////////*/
+
+struct AooCmd {
+    int port;
+    aoo::ip_address addr;
+};
+
+template<typename T>
+void doCommand(World* world, void *replyAddr, T* cmd, AsyncStageFn fn) {
+    DoAsynchronousCommand(world, replyAddr, 0, cmd,
+                          fn, 0, 0, CmdData::free<T>, 0, 0);
+}
+
+void aoo_register(World* world, void* user,
+                  sc_msg_iter* args, void* replyAddr) {
+    auto port = args->geti();
+    auto clientHost = args->gets();
+    auto clientPort = args->geti();
+
+    aoo::ip_address addr(clientHost, clientPort, gClientSocketType);
+
+    auto cmdData = CmdData::create<AooCmd>(world);
+    if (cmdData) {
+        cmdData->port = port;
+        cmdData->addr = addr;
+
+        auto fn = [](World* world, void* x) {
+            auto data = (AooCmd *)x;
+
+            char buf[1024];
+            osc::OutboundPacketStream msg(buf, sizeof(buf));
+            msg << osc::BeginMessage("/aoo/register") << data->port;
+
+            auto success = registerClient(data->port, data->addr);
+
+            msg << (int32_t)success << gClientPort << osc::EndMessage;
+
+            sendReply(data->addr, msg);
+
+            return false; // done
+        };
+
+        doCommand(world, replyAddr, cmdData, fn);
+    }
+}
+
+void aoo_unregister(World* world, void* user,
+                    sc_msg_iter* args, void* replyAddr) {
+    auto port = args->geti();
+    auto clientHost = args->gets();
+    auto clientPort = args->geti();
+
+    aoo::ip_address addr(clientHost, clientPort, gClientSocketType);
+
+    auto cmdData = CmdData::create<AooCmd>(world);
+    if (cmdData) {
+        cmdData->port = port;
+        cmdData->addr = addr;
+
+        auto fn = [](World* world, void* x) {
+            auto data = (AooCmd *)x;
+
+            char buf[1024];
+            osc::OutboundPacketStream msg(buf, sizeof(buf));
+            msg << osc::BeginMessage("/aoo/unregister") << data->port;
+
+            auto success = unregisterClient(data->port, data->addr);
+
+            msg << (int32_t)success << osc::EndMessage;
+
+            sendReply(data->addr, msg);
+
+            return false; // done
+        };
+
+        doCommand(world, replyAddr, cmdData, fn);
+    }
+}
+
 /*////////////////// Setup /////////////////////*/
 
 void AooSendLoad(InterfaceTable *);
@@ -458,10 +502,8 @@ void AooServerLoad(InterfaceTable *);
 PluginLoad(Aoo) {
     // InterfaceTable *inTable implicitly given as argument to the load function
     ft = inTable; // store pointer to InterfaceTable
-    rt::interfaceTable = inTable; // for "rt_shared_ptr.h"
 
     AooSettings settings;
-    AooSettings_init(&settings);
     settings.logFunc = SCLog;
 
     aoo_initialize(&settings);
@@ -469,28 +511,37 @@ PluginLoad(Aoo) {
     Print("AOO (audio over OSC) %s\n", aoo_getVersionString());
     Print("  (c) 2020 Christof Ressi, Winfried Ritsch, et al.\n");
 
-    std::string msg;
-    if (aoo::check_ntp_server(msg)){
+    if (auto [ok, msg] = aoo::check_ntp_server(); ok){
         Print("%s\n", msg.c_str());
     } else {
-        Print("ERROR: %s\n", msg.c_str());
+        Print("WARNING: %s\n", msg.c_str());
     }
     Print("\n");
+
+    AooPluginCmd(aoo_register);
+    AooPluginCmd(aoo_unregister);
 
     AooSendLoad(ft);
     AooReceiveLoad(ft);
     AooClientLoad(ft);
     AooServerLoad(ft);
 
-    AooPluginCmd(aoo_register);
-    AooPluginCmd(aoo_unregister);
+    try {
+        aoo::udp_socket sock(aoo::port_tag{}, 0);
+        gClientPort = sock.port();
+        gClientSocketType = sock.family();
+        gClientSocket = std::move(sock);
+        LOG_DEBUG("aoo: create reply socket on port " << gClientPort);
+    } catch (const aoo::socket_error& e) {
+        LOG_ERROR("aoo: could not create reply socket: " << e.what());
+    }
+}
 
-    gClientSocket = aoo::socket_udp(0);
-    if (gClientSocket >= 0) {
-        gClientSocketType = aoo::socket_family(gClientSocket);
-    }
-    else {
-        LOG_ERROR("AOO: couldn't open client socket: "
-            << aoo::socket_strerror(aoo::socket_errno()));
-    }
+// NOTE: at the time of writing (SC 3.13), the 'unload' function is not
+// documented in the official plugin API (yet), but it is already called
+// by scsynth and Supernova!
+C_LINKAGE SC_API_EXPORT void unload() {    
+    gClientSocket.close();
+
+    aoo_terminate();
 }

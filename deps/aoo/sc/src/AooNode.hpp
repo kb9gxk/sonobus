@@ -7,7 +7,6 @@
 #include "common/net_utils.hpp"
 #include "common/sync.hpp"
 #include "common/time.hpp"
-#include "common/udp_server.hpp"
 
 #include <unordered_map>
 #include <cstring>
@@ -29,13 +28,11 @@
 class AooNode final : public INode {
     friend class INode;
 public:
-    AooNode(World *world, int port);
+    AooNode(int port);
 
     ~AooNode() override;
 
-    aoo::ip_address::ip_type type() const override { return server_.type(); }
-
-    int port() const override { return server_.port(); }
+    int port() const override { return port_; }
 
     AooClient * client() override {
         return client_.get();
@@ -46,19 +43,11 @@ public:
     void unregisterClient(sc::AooClient *c) override;
 
     void notify() override {
-    #if NETWORK_THREAD_POLL
-        update_.store(true);
-    #else
-        event_.set();
-    #endif
+        client_->notify();
     }
 
-    void lock() override {
-        clientMutex_.lock();
-    }
-
-    void unlock() override {
-        clientMutex_.unlock();
+    void sendReply(const char *data, size_t size) override {
+        ::sendReply(port_, data, size);
     }
 
     bool getSinkArg(sc_msg_iter *args, aoo::ip_address& addr,
@@ -78,42 +67,36 @@ private:
     using unique_lock = aoo::sync::unique_lock<aoo::sync::mutex>;
     using scoped_lock = aoo::sync::scoped_lock<aoo::sync::mutex>;
 
-    // UDP server
-    aoo::udp_server server_;
-    // client
+    int port_ = 0;
+    aoo::ip_address::ip_type type_ = aoo::ip_address::ip_type::Unspec; // TODO
+    bool ipv4mapped_ = false;
     AooClient::Ptr client_;
-    aoo::sync::mutex clientMutex_;
     std::thread clientThread_;
     sc::AooClient *clientObject_ = nullptr;
+    aoo::sync::mutex clientObjectMutex_;
     // threading
 #if NETWORK_THREAD_POLL
     std::thread iothread_;
-    std::atomic<bool> update_{false};
-#else
-    std::thread sendthread_;
-    std::thread recvthread_;
-    aoo::sync::event event_;
-#endif
     std::atomic<bool> quit_{false};
+#else
+    std::thread sendThread_;
+    std::thread receiveThread_;
+#endif
+
+    void handleEvent(const AooEvent *event);
+
+    void handleMessage(const AooByte *data, int32_t size);
+    void handleMessage(AooNtpTime time, const osc::ReceivedMessage& msg);
 
     // private methods
     bool getEndpointArg(sc_msg_iter *args, aoo::ip_address& addr,
                         int32_t *id, const char *what) const;
 
-    static AooInt32 send(void *user, const AooByte *msg, AooInt32 size,
-                         const void *addr, AooAddrSize addrlen, AooFlag flags);
-
 #if NETWORK_THREAD_POLL
     void performNetworkIO();
 #else
-    void sendPackets();
+    void send();
+
+    void receive();
 #endif
-    void handlePacket(int e, const aoo::ip_address& addr,
-                      const AooByte *data, AooSize size);
-
-    void handleClientMessage(const char *data, int32_t size,
-                             const aoo::ip_address& addr, aoo::time_tag time);
-
-    void handleClientBundle(const osc::ReceivedBundle& bundle,
-                            const aoo::ip_address& addr);
 };

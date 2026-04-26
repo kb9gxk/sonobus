@@ -6,8 +6,18 @@
 
 #include "common/time.hpp"
 
+#if AOO_USE_OPUS
+#include "codec/aoo_opus.h"
+#endif
+
 #include "string.h"
 #include "stdlib.h"
+
+#ifdef _WIN32
+# include <windows.h>
+#else // _WIN32
+# include <dlfcn.h>
+#endif
 
 // setup function
 #ifdef _WIN32
@@ -38,7 +48,9 @@ private:
     aoo::time_tag d_last_osctime;
     aoo::time_tag d_osctime_adjusted;
     double d_last_big_delta = 0;
+#if DEJITTER_CHECK
     double d_last_logical_time = -1;
+#endif
 
     void update();
 
@@ -65,7 +77,7 @@ t_dejitter::~t_dejitter(){
 // This is called exactly once per DSP tick and before any other clocks in AOO objects.
 void t_dejitter::update()
 {
-#if 1
+#if DEJITTER_CHECK
     // check if this is really called once per DSP tick
     auto logical_time = clock_getlogicaltime();
     if (logical_time == d_last_logical_time) {
@@ -74,7 +86,7 @@ void t_dejitter::update()
     d_last_logical_time = logical_time;
 #endif
     aoo::time_tag osctime = aoo::time_tag::now();
-    if (!d_last_osctime.value()) {
+    if (d_last_osctime.is_empty()) {
         d_osctime_adjusted = osctime;
     } else {
     #if DEJITTER_DEBUG
@@ -107,11 +119,11 @@ void t_dejitter::update()
             adjusted_delta = aoo::time_tag::duration(osctime, last_adjusted);
         }
         auto error = std::abs(adjusted_delta - period);
-        LOG_ALL("dejitter: real delta: " << (delta * 1000.0)
-                << " ms, adjusted delta: " << (adjusted_delta * 1000.0)
-                << " ms, error: " << (error * 1000.0) << " ms");
-        LOG_ALL("dejitter: real time: " << osctime
-                << ", adjusted time: " << d_osctime_adjusted);
+        LOG_DEBUG("dejitter: real delta: " << (delta * 1000.0)
+                  << " ms, adjusted delta: " << (adjusted_delta * 1000.0)
+                  << " ms, error: " << (error * 1000.0) << " ms");
+        LOG_DEBUG("dejitter: real time: " << osctime
+                  << ", adjusted time: " << d_osctime_adjusted);
     #endif
     }
     d_last_osctime = osctime;
@@ -160,6 +172,42 @@ uint64_t get_osctime(){
     return osctime;
 }
 
+static AooNtpTime g_start_time;
+
+double get_elapsed_ms(AooNtpTime tt) {
+    return aoo::time_tag::duration(g_start_time, tt);
+}
+
+//---------------------------------------------------//
+
+static t_class *aoo_class;
+
+struct t_aoo
+{
+    t_object x_obj;
+};
+
+void aoo_multichannel(t_aoo *x)
+{
+    t_atom a;
+#ifdef PD_HAVE_MULTICHANNEL
+    SETFLOAT(&a, g_signal_setmultiout != nullptr);
+#else
+    SETFLOAT(&a, -1); // compiled without multichannel support
+#endif
+    outlet_anything(x->x_obj.ob_outlet, gensym("multichannel"), 1, &a);
+}
+
+void * aoo_new() {
+    auto x = (t_aoo *)pd_new(aoo_class);
+    outlet_new(&x->x_obj, &s_list);
+    return x;
+}
+
+//---------------------------------------------------//
+
+t_signal_setmultiout g_signal_setmultiout;
+
 void aoo_send_tilde_setup(void);
 void aoo_receive_tilde_setup(void);
 void aoo_node_setup(void);
@@ -170,17 +218,46 @@ extern "C" EXPORT void aoo_setup(void)
 {
     post("AOO (audio over OSC) %s", aoo_getVersionString());
     post("  (c) 2020 Christof Ressi, Winfried Ritsch, et al.");
+    startpost("Available codecs: PCM");
+#if AOO_USE_OPUS
+    startpost(", %s", opus_get_version_string());
+#endif
+    endpost();
 
     aoo_initialize(NULL);
 
-    std::string msg;
-    if (aoo::check_ntp_server(msg)){
+    if (auto [ok, msg] = aoo::check_ntp_server(); ok){
         post("%s", msg.c_str());
     } else {
         pd_error(0, "%s", msg.c_str());
     }
 
     post("");
+
+    g_start_time = aoo::time_tag::now();
+
+#ifdef PD_HAVE_MULTICHANNEL
+    // runtime check for multichannel support:
+#ifdef _WIN32
+    // get a handle to the module containing the Pd API functions.
+    // NB: GetModuleHandle("pd.dll") does not cover all cases.
+    HMODULE module;
+    if (GetModuleHandleEx(
+        GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+            (LPCSTR)&pd_typedmess, &module)) {
+        g_signal_setmultiout = (t_signal_setmultiout)(void *)GetProcAddress(
+            module, "signal_setmultiout");
+    }
+#else
+    // search recursively, starting from the main program
+    g_signal_setmultiout = (t_signal_setmultiout)dlsym(
+        dlopen(nullptr, RTLD_NOW), "signal_setmultiout");
+#endif
+#endif // PD_HAVE_MULTICHANNEL
+
+    aoo_class = class_new(gensym("aoo"), (t_newmethod)aoo_new, 0,
+                          sizeof(t_aoo), 0, A_NULL);
+    class_addmethod(aoo_class, (t_method)aoo_multichannel, gensym("multichannel"), A_NULL);
 
     aoo_dejitter_setup();
     aoo_node_setup();

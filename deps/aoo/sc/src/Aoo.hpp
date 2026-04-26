@@ -6,31 +6,20 @@
 
 #include "rt_shared_ptr.hpp"
 
-#include "aoo/aoo.h"
-#include "aoo/aoo_client.hpp"
+#include "aoo.h"
+#include "aoo_client.hpp"
 
+#include "common/log.hpp"
 #include "common/net_utils.hpp"
 #include "common/sync.hpp"
+#include "common/time.hpp"
 #include "common/utils.hpp"
 
 #include "oscpack/osc/OscOutboundPacketStream.h"
 
 #include <string>
 #include <atomic>
-
-/*//////////////////////// Reply //////////////////////////*/
-
-void sendMsgRT(World *world, const char *data, int32_t size);
-
-inline void sendMsgRT(World *world, const osc::OutboundPacketStream& msg){
-    sendMsgRT(world, msg.Data(), msg.Size());
-}
-
-void sendMsgNRT(World *world, const char *data, int32_t size);
-
-inline void sendMsgNRT(World *world, const osc::OutboundPacketStream& msg){
-    sendMsgNRT(world, msg.Data(), msg.Size());
-}
+#include <optional>
 
 /*//////////////////////// AooNode ////////////////////////*/
 
@@ -42,11 +31,9 @@ class INode {
 public:
     using ptr = std::shared_ptr<INode>;
 
-    static INode::ptr get(World *world, int port);
+    static INode::ptr get(int port);
 
     virtual ~INode() {}
-
-    virtual aoo::ip_address::ip_type type() const = 0;
 
     virtual int port() const = 0;
 
@@ -58,9 +45,11 @@ public:
 
     virtual void notify() = 0;
 
-    virtual void lock() = 0;
+    void sendReply(const osc::OutboundPacketStream& msg) {
+        sendReply(msg.Data(), msg.Size());
+    }
 
-    virtual void unlock() = 0;
+    virtual void sendReply(const char *data, size_t size) = 0;
 
     virtual bool getSinkArg(sc_msg_iter *args, aoo::ip_address& addr,
                             AooId &id) const = 0;
@@ -71,7 +60,15 @@ public:
     virtual bool getPeerArg(sc_msg_iter *args, aoo::ip_address& addr) const = 0;
 };
 
-using NodeLock = std::unique_lock<INode>;
+/*//////////////////// Reply ////////////////////////*/
+
+aoo::ip_address findReplyAddr(int port);
+
+void sendReply(int port, const char *msg, size_t size);
+
+inline void sendReply(int port, const osc::OutboundPacketStream& msg){
+    sendReply(port, msg.Data(), msg.Size());
+}
 
 /*/////////////////// Commands //////////////////////*/
 
@@ -110,7 +107,7 @@ private:
 };
 
 template<typename T>
-struct _OpenCmd : CmdData {
+struct OpenCmd_ : CmdData {
     int32_t port;
     AooId id;
     INode::ptr node;
@@ -121,11 +118,14 @@ struct _OpenCmd : CmdData {
     AooSeconds latency;
 };
 
-struct OptionCmd : CmdData {
+struct EndpointCmd : CmdData {
     aoo::ip_address address;
-    int32_t port;
-    AooId id;
-    AooFlag flags;
+    AooId id = 0; // not kAooIdInvalid!
+    int32_t replyID = -1;
+};
+
+struct OptionCmd : EndpointCmd {
+    AooFlag flags = 0;
     union {
         float f;
         int i;
@@ -176,7 +176,7 @@ public:
         return *owner_;
     }
 
-    void setNode(std::shared_ptr<INode> node){
+    void setNode(std::shared_ptr<INode> node) {
         node_ = node;
     }
 
@@ -187,23 +187,37 @@ public:
     // perform sequenced command
     template<typename T>
     void doCmd(T* cmdData, AsyncStageFn stage2, AsyncStageFn stage3 = nullptr,
-               AsyncStageFn stage4 = nullptr)
-    {
+               AsyncStageFn stage4 = nullptr) {
         doCmd(cmdData, stage2, stage3, stage4, CmdData::free<T>);
     }
 
     // reply messages
-    void beginReply(osc::OutboundPacketStream& msg, const char *cmd, int replyID);
-    void beginEvent(osc::OutboundPacketStream &msg, const char *event);
-    void beginEvent(osc::OutboundPacketStream& msg, const char *event,
-                    const AooEndpoint& ep);
+    osc::OutboundPacketStream& beginReply(osc::OutboundPacketStream& msg,
+                                          const char *cmd, int replyID) {
+        return beginReply(msg, cmd) << replyID;
+    }
+    osc::OutboundPacketStream& beginEvent(osc::OutboundPacketStream &msg, const char *event) {
+        return beginReply(msg, "/aoo/event") << event;
+    }
+    osc::OutboundPacketStream& beginEvent(osc::OutboundPacketStream& msg, const char *event,
+                                          const AooEndpoint& ep) {
+        aoo::ip_address addr((const sockaddr *)ep.address, ep.addrlen);
+        return beginEvent(msg, event) << addr.name() << addr.port() << ep.id;
+    }
+
     void sendMsgRT(osc::OutboundPacketStream& msg);
-    void sendMsgNRT(osc::OutboundPacketStream& msg);
+
+    void sendMsgNRT(osc::OutboundPacketStream& msg) {
+        msg << osc::EndMessage;
+        node_->sendReply(msg);
+    }
 protected:
     virtual void onDetach() = 0;
 
     void doCmd(CmdData *cmdData, AsyncStageFn stage2, AsyncStageFn stage3,
                AsyncStageFn stage4, AsyncFreeFn cleanup);
+
+    osc::OutboundPacketStream& beginReply(osc::OutboundPacketStream& msg, const char *cmd);
 private:
     World *world_;
     AooUnit *owner_;
@@ -242,3 +256,7 @@ bool serializeFormat(osc::OutboundPacketStream& msg, const AooFormat& f);
 
 bool parseFormat(const AooUnit& unit, int defNumChannels, sc_msg_iter *args,
                  AooFormatStorage &f);
+
+bool serializeData(osc::OutboundPacketStream& msg, const AooData* data);
+
+std::optional<AooData> parseData(sc_msg_iter *args);

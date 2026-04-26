@@ -9,42 +9,33 @@ namespace aoo {
 
 //-------------------------- sent_block -----------------------------//
 
-void sent_block::set(const data_packet& d, int32_t framesize)
+void sent_block::set(const data_packet& d, int16_t frame_size_)
 {
     sequence = d.sequence;
-    message_size = d.msgsize;
+    message_size = d.msg_size;
     samplerate = d.samplerate;
     flags = d.flags;
-    numframes_ = d.nframes;
-    framesize_ = framesize;
-    if (d.totalsize > 0) {
-        buffer_.assign(d.data, d.data + d.totalsize);
+    num_frames = d.num_frames;
+    frame_size = frame_size_;
+    if (d.total_size > 0) {
+        buffer_.assign(d.data, d.data + d.total_size);
     } else {
         buffer_.clear();
     }
 }
 
-int32_t sent_block::get_frame(int32_t which, AooByte *data, int32_t n) const {
-    assert((framesize_ > 0) == (numframes_ > 0));
-    assert(which >= 0 && which < numframes_);
-    auto onset = which * framesize_;
-    auto size = (which == numframes_ - 1) ? buffer_.size() - onset : framesize_;
-    if (n >= size){
+int32_t sent_block::get_frame(int32_t index, AooByte *data, int32_t count) const {
+    assert((frame_size > 0) == (num_frames > 0));
+    assert(index >= 0 && index < num_frames);
+    auto onset = index * frame_size;
+    auto size = (index == num_frames - 1) ? buffer_.size() - onset : frame_size;
+    if (count >= size){
         auto ptr = buffer_.data() + onset;
         std::copy(ptr, ptr + size, data);
         return size;
     } else {
         LOG_ERROR("sent_block::get_frame(): buffer too small!");
         return 0;
-    }
-}
-
-int32_t sent_block::frame_size(int32_t which) const {
-    assert(which < numframes_);
-    if (which == numframes_ - 1){ // last frame
-        return size() - which * framesize_;
-    } else {
-        return framesize_;
     }
 }
 
@@ -135,164 +126,156 @@ sent_block * history_buffer::push()
 
 //---------------------- received_block ------------------------//
 
-void received_block::reserve(int32_t size){
-    buffer_.reserve(size);
+void received_block::init(int32_t seq)
+{
+    assert(frames_.size() == 0);
+
+    sequence = seq;
+    total_size = 0;
+    message_size = 0;
+    samplerate = 0;
+    channel = 0;
+    received_frames = -1; // sentinel for placeholder block!
+    num_tries_ = 0;
+    resent_ = false;
+    timestamp_ = 0;
 }
 
 void received_block::init(const data_packet& d)
 {
-    assert((d.totalsize > 0) == (d.nframes > 0));
-    // LATER support blocks with arbitrary number of frames
-    assert(d.nframes <= (int32_t)frames_.size());
-    // keep timestamp and numtries if we're actually reiniting
-    if (d.sequence != sequence){
-        timestamp_ = 0;
-        numtries_ = 0;
-    }
+    assert(frames_.size() == 0);
+    assert((d.total_size > 0) == (d.num_frames > 0));
+
+    auto prev_sequence = d.sequence;
     sequence = d.sequence;
-    samplerate = d.samplerate;
-    message_size = d.msgsize;
+    total_size = d.total_size;
+    message_size = d.msg_size;
     flags = d.flags;
+    tt = d.tt;
+    samplerate = d.samplerate;
     channel = d.channel;
-    buffer_.resize(d.totalsize);
-    numframes_ = d.nframes;
-    frames_.reset();
-    for (int i = 0; i < d.nframes; ++i){
-        frames_[i] = true;
+    received_frames = 0; // !
+    // keep timestamp and numtries if we're actually reiniting
+    if (sequence != prev_sequence) {
+        timestamp_ = 0;
+        num_tries_ = 0;
     }
+    resent_ = false;
+    frames_.init(d.num_frames);
 }
 
-void received_block::init(int32_t seq)
-{
-    sequence = seq;
-    samplerate = 0;
-    message_size = 0;
-    channel = 0;
-    buffer_.clear();
-    numframes_ = -1; // sentinel for placeholder block
-    timestamp_ = 0;
-    numtries_ = 0;
-    frames_.set(); // has_frame() always returns false
-}
-
-void received_block::add_frame(int32_t which, const AooByte *data, int32_t n){
-    assert(!buffer_.empty());
-    assert(numframes_ > 0 && which >= 0 && which < numframes_);
-    if (which == numframes_ - 1){
-    #if AOO_DEBUG_JITTER_BUFFER
-        LOG_ALL("jitter buffer: copy last frame with " << n << " bytes");
-    #endif
-        std::copy(data, data + n, buffer_.end() - n);
-    } else {
-    #if AOO_DEBUG_JITTER_BUFFER
-        LOG_ALL("jitter buffer: copy frame " << which << " with " << n << " bytes");
-    #endif
-        std::copy(data, data + n, buffer_.data() + (which * n));
-    }
-    frames_[which] = false;
-}
-
-bool received_block::update(double time, double interval){
+bool received_block::update(double time, double interval) {
     if (timestamp_ > 0 && (time - timestamp_) < interval){
         return false;
     }
     timestamp_ = time;
-    numtries_++;
+    num_tries_++;
 #if AOO_DEBUG_JITTER_BUFFER
-    LOG_ALL("jitter buffer: request block " << sequence);
+    LOG_DEBUG("jitter buffer: request block " << sequence);
 #endif
     return true;
 }
 
 //----------------------- jitter_buffer ----------------------//
 
-void jitter_buffer::clear(){
-    head_ = tail_ = size_ = 0;
-    last_popped_ = last_pushed_ = -1;
+jitter_buffer::~jitter_buffer() {
+    reset();
+    // ~data_frame_allocator will actually release the memory
 }
 
-void jitter_buffer::resize(int32_t n, int32_t maxblocksize){
-    data_.resize(n);
-#if 1
-    data_.shrink_to_fit();
-#endif
-    for (auto& b : data_){
-        b.reserve(maxblocksize);
+void jitter_buffer::reset() {
+    // first deallocate all frames!
+    for (auto& b : data_) {
+        b.clear(alloc_);
     }
-    clear();
+    // but don't release the memory!
+    head_ = tail_ = size_ = 0;
+    last_popped_ = last_pushed_ = sentinel;
 }
 
-received_block* jitter_buffer::find(int32_t seq){
+void jitter_buffer::resize(int32_t n) {
+    // first reset to release frames
+    reset();
+    // finally resize the queue
+    data_.resize(n);
+}
+
+received_block* jitter_buffer::find(int32_t seq) {
     // first try the end, as we most likely have to complete the most recent block
     if (empty()){
         return nullptr;
     } else if (back().sequence == seq){
         return &back();
     }
-#if 0
-    // linear search
-    if (head_ > tail_){
-        for (int32_t i = tail_; i < head_; ++i){
-            if (data_[i].sequence == seq){
-                return &data_[i];
+    if (size_ < search_threshold) {
+        // linear search
+        if (head_ > tail_){
+            for (int32_t i = tail_; i < head_; ++i){
+                if (data_[i].sequence == seq){
+                    return &data_[i];
+                }
             }
-        }
-    } else {
-        for (int32_t i = 0; i < head_; ++i){
-            if (data_[i].sequence == seq){
-                return &data_[i];
-            }
-        }
-        for (int32_t i = tail_; i < capacity(); ++i){
-            if (data_[i].sequence == seq){
-                return &data_[i];
-            }
-        }
-    }
-    return nullptr;
-#else
-    // binary search
-    // (blocks are always pushed in chronological order)
-    auto dofind = [&](auto begin, auto end) -> received_block * {
-        auto result = std::lower_bound(begin, end, seq, [](auto& a, auto& b){
-            return a.sequence < b;
-        });
-        if (result != end && result->sequence == seq){
-            return &(*result);
         } else {
-            return nullptr;
+            for (int32_t i = 0; i < head_; ++i){
+                if (data_[i].sequence == seq){
+                    return &data_[i];
+                }
+            }
+            for (int32_t i = tail_; i < capacity(); ++i){
+                if (data_[i].sequence == seq){
+                    return &data_[i];
+                }
+            }
         }
-    };
-
-    auto begin = data_.data();
-    if (head_ > tail_){
-        // [tail, head]
-        return dofind(begin + tail_, begin + head_);
+        return nullptr;
     } else {
-        // [begin, head] + [tail, end]
-        auto result = dofind(begin, begin + head_);
-        if (!result){
-            result = dofind(begin + tail_, begin + data_.capacity());
+        // binary search
+        // (blocks are always pushed in chronological order)
+        auto dofind = [&](auto begin, auto end) -> received_block * {
+            auto result = std::lower_bound(begin, end, seq, [](auto& a, auto& b){
+                return a.sequence < b;
+            });
+            if (result != end && result->sequence == seq){
+                return &(*result);
+            } else {
+                return nullptr;
+            }
+        };
+
+        auto begin = data_.data();
+        if (head_ > tail_){
+            // [tail, head]
+            return dofind(begin + tail_, begin + head_);
+        } else {
+            // [begin, head] + [tail, end]
+            auto result = dofind(begin, begin + head_);
+            if (!result){
+                result = dofind(begin + tail_, begin + data_.capacity());
+            }
+            return result;
         }
-        return result;
     }
-#endif
 }
 
 received_block* jitter_buffer::push(int32_t seq){
     assert(!full());
-    auto old = head_;
+    auto current = head_;
     if (++head_ == capacity()){
         head_ = 0;
     }
     size_++;
-    assert((last_pushed_ == -1) || ((seq - last_pushed_) == 1));
+    assert((last_pushed_ == sentinel) || ((seq - last_pushed_) == 1));
     last_pushed_ = seq;
-    return &data_[old];
+    auto block = &data_[current];
+#if 0
+    block->clear(alloc_);
+#endif
+    return block;
 }
 
 void jitter_buffer::pop(){
     assert(!empty());
+    data_[tail_].clear(alloc_); // !
     last_popped_ = data_[tail_].sequence;
     if (++tail_ == capacity()){
         tail_ = 0;
@@ -355,7 +338,7 @@ jitter_buffer::const_iterator jitter_buffer::end() const {
 std::ostream& operator<<(std::ostream& os, const jitter_buffer& jb){
     os << "jitterbuffer (" << jb.size() << " / " << jb.capacity() << "): ";
     for (auto& b : jb){
-        os << "\n" << b.sequence << " " << "(" << b.received_frames() << "/" << b.num_frames() << ")";
+        os << "\n" << b.sequence << " " << "(" << b.received_frames << "/" << b.num_frames() << ")";
     }
     return os;
 }

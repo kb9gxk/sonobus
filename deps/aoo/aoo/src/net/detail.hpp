@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../detail.hpp"
-#include "aoo/aoo_requests.h"
+#include "aoo_requests.h"
 
 #include <exception>
 
@@ -52,6 +52,9 @@
     kAooMsgDomain kAooMsgPeer kAooMsgAck
 
 // client messages
+
+#define kAooMsgClientPing \
+    kAooMsgDomain kAooMsgClient kAooMsgPing
 
 #define kAooMsgClientPong \
     kAooMsgDomain kAooMsgClient kAooMsgPong
@@ -109,6 +112,9 @@
 #define kAooMsgServerPing \
     kAooMsgDomain kAooMsgServer kAooMsgPing
 
+#define kAooMsgServerPong \
+kAooMsgDomain kAooMsgServer kAooMsgPong
+
 #define kAooMsgServerGroupJoin \
     kAooMsgDomain kAooMsgServer kAooMsgGroupJoin
 
@@ -148,39 +154,23 @@ AooError parse_pattern(const AooByte *msg, int32_t n,
 
 AooSize write_relay_message(AooByte *buffer, AooSize bufsize,
                             const AooByte *msg, AooSize msgsize,
-                            const ip_address& addr);
+                            const ip_address& addr, bool binary);
 
-std::string encrypt(const std::string& input);
-
-#if 0
-using ip_address_list = std::vector<ip_address, aoo::allocator<ip_address>>;
-#else
-using ip_address_list = std::vector<ip_address>;
-#endif
-
-inline osc::OutboundPacketStream& operator<<(osc::OutboundPacketStream& msg, const ip_address& addr) {
-    msg << addr.name() << (int32_t)addr.port();
-    return msg;
-}
-
-inline ip_address osc_read_address(osc::ReceivedMessageArgumentIterator& it) {
-    auto hostname = (it++)->AsString();
-    auto port = (it++)->AsInt32();
-    return ip_address(hostname, port);
-}
+std::string encrypt(std::string_view input);
 
 struct ip_host {
     ip_host() = default;
-    ip_host(const std::string& _name, int _port)
+    ip_host(std::string_view _name, int _port)
         : name(_name), port(_port) {}
     ip_host(const AooIpEndpoint& ep)
-        : name(ep.hostName), port(ep.port) {}
+        : name(ep.hostName ? ep.hostName : ""), port(ep.port) {}
 
     std::string name;
     int port = 0;
 
     bool valid() const {
-        return !name.empty() && port > 0;
+        // NB: name might be empty (= origin)!
+        return port > 0;
     }
 
     bool operator==(const ip_host& other) const {
@@ -192,20 +182,29 @@ struct ip_host {
     }
 };
 
-inline osc::OutboundPacketStream& operator<<(osc::OutboundPacketStream& msg, const ip_host& addr) {
-    msg << addr.name.c_str() << addr.port;
+inline osc::OutboundPacketStream& operator<<(osc::OutboundPacketStream& msg, const ip_host& host) {
+    if (host.valid()) {
+        msg << host.name.c_str() << host.port;
+    } else {
+        msg << osc::Nil << osc::Nil;
+    }
     return msg;
 }
 
-inline AooIpEndpoint osc_read_host(osc::ReceivedMessageArgumentIterator& it) {
-    try {
+inline std::optional<AooIpEndpoint> osc_read_host(osc::ReceivedMessageArgumentIterator& it) {
+    if (it->IsNil()) {
+        it++; it++;
+        return std::nullopt;
+    } else {
         AooIpEndpoint ep;
         ep.hostName = (it++)->AsString();
         ep.port = (it++)->AsInt32();
-        return ep;
-    } catch (const osc::MissingArgumentException&) {
-        LOG_DEBUG("host argument not provided");
-        return AooIpEndpoint { "", 0 };
+        // NB: empty string is allowed (= origin)!
+        if (ep.port > 0) {
+            return ep;
+        } else {
+            throw osc::MalformedPacketException("bad port argument for IP endpoint");
+        }
     }
 }
 

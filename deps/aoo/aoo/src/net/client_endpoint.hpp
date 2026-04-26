@@ -1,10 +1,13 @@
 #pragma once
 
-#include "aoo/aoo_requests.h"
-#include "aoo/aoo_server.h"
+#include "aoo_requests.h"
+#include "aoo_server.h"
+
 
 #include "detail.hpp"
 #include "osc_stream_receiver.hpp"
+#include "ping_timer.hpp"
+#include "tcp_server.hpp"
 
 namespace aoo {
 namespace net {
@@ -16,11 +19,12 @@ class Server;
 
 class user {
 public:
-    user(const std::string& name, const std::string& pwd, AooId id,
+    user(std::string_view name, std::string_view pwd, AooId id,
          AooId group, AooId client, const AooData *md,
-         const ip_host& relay, AooFlag flags)
+         const AooIpEndpoint *relay, AooFlag flags)
         : name_(name), pwd_(pwd), id_(id), group_(group),
-          client_(client), flags_(flags), md_(md), relay_(relay) {}
+          client_(client), flags_(flags), md_(md),
+          relay_(relay ? *relay : ip_host{}) {}
 
     ~user() {}
 
@@ -28,6 +32,7 @@ public:
 
     const std::string& pwd() const { return pwd_; }
 
+    // NB: pwd may be NULL
     bool check_pwd(const char *pwd) const {
         return pwd_.empty() || (pwd && (pwd == pwd_));
     }
@@ -85,9 +90,10 @@ using user_list = std::vector<user>;
 
 class group {
 public:
-    group(const std::string& name, const std::string& pwd, AooId id,
-         const AooData *md, const ip_host& relay, AooFlag flags)
-        : name_(name), pwd_(pwd), id_(id), flags_(flags), md_(md), relay_(relay) {}
+    group(std::string_view name, std::string_view pwd, AooId id,
+         const AooData *md, const AooIpEndpoint *relay, AooFlag flags)
+        : name_(name), pwd_(pwd), id_(id), flags_(flags), md_(md),
+          relay_(relay ? *relay : ip_host{}) {}
 
     const std::string& name() const { return name_; }
 
@@ -115,7 +121,7 @@ public:
 
     user* add_user(user&& u);
 
-    user* find_user(const std::string& name);
+    user* find_user(std::string_view name);
 
     user* find_user(AooId id);
 
@@ -149,8 +155,8 @@ inline std::ostream& operator<<(std::ostream& os, const group& g) {
 
 class client_endpoint {
 public:
-    client_endpoint(AooId id, AooServerReplyFunc replyfn, void *context)
-        : id_(id), replyfn_(replyfn), context_(context) {}
+    client_endpoint(AooId id, aoo::tcp_server::reply_func fn)
+        : id_(id), replyfn_(fn) {}
 
     ~client_endpoint() {}
 
@@ -186,10 +192,10 @@ public:
 
     void send_notification(Server& server, const AooData& data) const;
 
-    void send_peer_add(Server& server, const group& grp, const user& usr,
-                       const client_endpoint& client) const;
+    void send_peer_join(Server& server, const group& grp, const user& usr,
+                        const client_endpoint& client) const;
 
-    void send_peer_remove(Server& server, const group& grp, const user& usr) const;
+    void send_peer_leave(Server& server, const group& grp, const user& usr) const;
 
     void send_group_update(Server& server, const group& grp, AooId usr);
 
@@ -203,12 +209,18 @@ public:
 
     void on_close(Server& server);
 
-    void handle_message(Server& server, const AooByte *data, int32_t n);
+    void handle_data(Server& server, const AooByte *data, int32_t n);
+
+    std::pair<bool, double> update(Server& server, aoo::time_tag now,
+                                   const AooPingSettings& settings);
+
+    void handle_pong() {
+        ping_timer_.pong();
+    }
 private:
     AooId id_;
+    aoo::tcp_server::reply_func replyfn_;
     std::string version_;
-    AooServerReplyFunc replyfn_;
-    void *context_;
     osc_stream_receiver receiver_;
     ip_address_list public_addresses_;
     struct group_user {
@@ -216,6 +228,8 @@ private:
         AooId user;
     };
     std::vector<group_user> group_users_;
+    ping_timer ping_timer_;
+    bool active_ = true;
 };
 
 } // net

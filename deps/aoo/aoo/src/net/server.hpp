@@ -4,23 +4,41 @@
 
 #pragma once
 
-#include "aoo/aoo_server.hpp"
+#include "aoo_server.hpp"
+
+#include "client_endpoint.hpp"
+#include "detail.hpp"
+#include "event.hpp"
+#include "tcp_server.hpp"
+#include "udp_server.hpp"
 
 #include "common/utils.hpp"
 #include "common/lockfree.hpp"
 #include "common/net_utils.hpp"
 
-#include "client_endpoint.hpp"
-#include "detail.hpp"
-#include "event.hpp"
-
-#include "oscpack/osc/OscOutboundPacketStream.h"
-#include "oscpack/osc/OscReceivedElements.h"
+#include "osc/OscOutboundPacketStream.h"
+#include "osc/OscReceivedElements.h"
 
 #include <unordered_map>
 #include <vector>
 
-#define DEBUG_THREADS 0
+// these settings are used to maintain the TCP connection
+// to the clients.
+#ifndef AOO_SERVER_PING_INTERVAL
+# define AOO_SERVER_PING_INTERVAL 5.0
+#endif
+
+#ifndef AOO_SERVER_PROBE_TIME
+# define AOO_SERVER_PROBE_TIME 10.0
+#endif
+
+#ifndef AOO_SERVER_PROBE_INTERVAL
+# define AOO_SERVER_PROBE_INTERVAL 1.0
+#endif
+
+#ifndef AOO_SERVER_PROBE_COUNT
+# define AOO_SERVER_PROBE_COUNT 5
+#endif
 
 namespace aoo {
 namespace net {
@@ -33,20 +51,24 @@ public:
 
     ~Server();
 
-    AooError AOO_CALL setup(AooUInt16 port, AooSocketFlags flags) override;
+    AooError AOO_CALL setup(AooServerSettings& settings) override;
 
-    AooError AOO_CALL handleUdpMessage(
+    AooError AOO_CALL run(AooSeconds timeout) override;
+
+    AooError AOO_CALL receive(AooSeconds timeout) override;
+
+    AooError AOO_CALL handlePacket(
             const AooByte *data, AooInt32 size,
-            const void *address, AooAddrSize addrlen,
-            AooSendFunc replyFn, void *user) override;
+            const void *address, AooAddrSize addrlen) override;
 
-    AooError AOO_CALL addClient(
-            AooServerReplyFunc replyFn, void *user, AooId *id) override;
+    AooError AOO_CALL stop() override;
 
-    AooError AOO_CALL removeClient(AooId clientId) override;
+    AooError AOO_CALL setEventHandler(
+            AooEventHandler fn, void *user, AooEventMode mode) override;
 
-    AooError AOO_CALL handleClientMessage(
-            AooId client, const AooByte *data, AooInt32 size) override;
+    AooBool AOO_CALL eventsAvailable() override;
+
+    AooError AOO_CALL pollEvents() override;
 
     AooError AOO_CALL setRequestHandler(
             AooRequestHandler cb, void *user, AooFlag flags) override;
@@ -83,25 +105,10 @@ public:
             AooId group, AooCtl ctl, AooIntPtr index,
             void *data, AooSize size) override;
 
-    AooError AOO_CALL update() override;
-
-    AooError AOO_CALL setEventHandler(
-            AooEventHandler fn, void *user, AooEventMode mode) override;
-
-    AooBool AOO_CALL eventsAvailable() override;
-
-    AooError AOO_CALL pollEvents() override;
-
     AooError AOO_CALL control(
             AooCtl ctl, AooIntPtr index, void *data, AooSize size) override;
 
     //-----------------------------------------------------------------//
-
-#if 0
-    ip_address::ip_type type() const {
-        return ip_address::ip_type::Unspec; // TODO
-    }
-#endif
 
     client_endpoint * find_client(AooId id);
 
@@ -113,7 +120,7 @@ public:
 
     group* find_group(AooId id);
 
-    group* find_group(const std::string& name);
+    group* find_group(std::string_view name);
 
     group* add_group(group&& g);
 
@@ -135,20 +142,33 @@ public:
     void handle_message(client_endpoint& client, const osc::ReceivedMessage& msg, int32_t size);
 private:
     // UDP
-    AooError handle_udp_message(const AooByte *data, AooSize size, int onset,
-                            const ip_address& addr, const sendfn& fn);
+    void handle_udp_packet(const AooByte *data, AooInt32 size,
+                           const aoo::ip_address& addr);
 
-    AooError handle_relay(const AooByte *data, AooSize size,
-                          const aoo::ip_address& addr, const aoo::sendfn& fn) const;
+    void handle_udp_message(const AooByte *data, AooSize size, int onset,
+                            const ip_address& addr);
 
-    void handle_ping(const osc::ReceivedMessage& msg,
-                     const ip_address& addr, const sendfn& fn) const;
+    void handle_relay(const AooByte *data, AooSize size, const aoo::ip_address& addr);
 
-    void handle_query(const osc::ReceivedMessage& msg,
-                      const ip_address& addr, const sendfn& fn);
+    void handle_ping(const osc::ReceivedMessage& msg, const ip_address& addr);
+
+    void handle_query(const osc::ReceivedMessage& msg, const ip_address& addr);
+
+    void send_udp(const ip_address& addr, const AooByte *data, AooSize size) {
+        udp_sendfn_(data, size, addr);
+    }
 
     // TCP
-    void handle_ping(const client_endpoint& client, const osc::ReceivedMessage& msg);
+    AooId accept_client(const aoo::ip_address& addr, aoo::tcp_server::reply_func fn);
+
+    bool remove_client(AooId client, AooError err, std::string_view msg = {});
+
+    void handle_client_data(AooId id, int error, const AooByte *data,
+                            AooInt32 size, const aoo::ip_address& addr);
+
+    void handle_ping(client_endpoint& client, const osc::ReceivedMessage& msg);
+
+    void handle_pong(client_endpoint& client, const osc::ReceivedMessage& msg);
 
     void handle_login(client_endpoint& client, const osc::ReceivedMessage& msg);
 
@@ -205,9 +225,12 @@ private:
 
     void send_event(event_ptr event);
 
+    void close();
+
     //----------------------------------------------------------------//
 
     // UDP server
+    sendfn udp_sendfn_;
     int port_ = 0; // unused
     ip_address::ip_type address_family_ = ip_address::Unspec;
     bool use_ipv4_mapped_ = false;
@@ -219,22 +242,68 @@ private:
     using group_map = std::unordered_map<AooId, group>;
     group_map groups_;
     AooId next_group_id_{0};
-    // network
+    // networking
+    aoo::udp_server udp_server_;
+    aoo::tcp_server tcp_server_;
     std::vector<char> sendbuffer_;
+    // message queue
+    struct message {
+        AooId group;
+        AooId user;
+        AooDataType type;
+        std::vector<AooByte> data;
+    };
+    using message_queue = lockfree::concurrent_queue<message>;
+    message_queue message_queue_;
+
+    void push_message(AooId group, AooId user, const AooData& data);
+
+    void dispatch_message(const message& msg);
+    // mutex for protecting the client and group list
+    //
+    // NB: shared_recursive_mutex only supports recursive shared
+    // locks if the top-level lock is exclusive! AFAICT, this
+    // should be ok since all API methods that may cause callback
+    // invocations (events or requests) take a writer lock.
+    //
+    // (Yes, I know that recursive locks are evil, but it's
+    // the best solution I could come up with that allows
+    // API methods to be called safely both from the outside
+    // and from within event handlers and request handlers.
+    sync::shared_recursive_mutex mutex_;
     // request handler
     AooRequestHandler request_handler_{nullptr};
     void *request_context_{nullptr};
     // event handler
-    using event_queue = aoo::unbounded_mpsc_queue<event_ptr>;
-    event_queue events_;
-    AooEventHandler eventhandler_ = nullptr;
-    void *eventcontext_ = nullptr;
-    AooEventMode eventmode_ = kAooEventModeNone;
+    using event_queue = lockfree::concurrent_queue<event_ptr>;
+    event_queue event_queue_;
+    AooEventHandler event_handler_ = nullptr;
+    void *event_context_ = nullptr;
+    AooEventMode event_mode_ = kAooEventModeNone;
     // options
-    ip_host relay_addr_;
+    ip_host global_relay_addr_;
     std::string password_;
-    parameter<bool> allow_relay_{AOO_SERVER_RELAY};
+    parameter<bool> internal_relay_{AOO_SERVER_INTERNAL_RELAY};
     parameter<bool> group_auto_create_{AOO_GROUP_AUTO_CREATE};
+    AooPingSettings ping_settings_ {
+        AOO_SERVER_PING_INTERVAL,
+        AOO_SERVER_PROBE_TIME,
+        AOO_SERVER_PROBE_INTERVAL,
+        AOO_SERVER_PROBE_COUNT
+    };
+    sync::spinlock settings_lock_;
+
+    static int send(void *user, const AooByte *data, AooInt32 size,
+                    const void *address, AooAddrSize addrlen, AooFlag) {
+        aoo::ip_address addr((const struct sockaddr *)address, addrlen);
+        auto& server = static_cast<Server *>(user)->udp_server_;
+        try {
+            return server.send(addr, data, size);
+        } catch (const socket_error& e) {
+            socket::set_last_error(e.code());
+            return -1;
+        }
+    }
 };
 
 } // net

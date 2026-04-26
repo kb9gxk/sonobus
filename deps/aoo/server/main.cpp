@@ -1,13 +1,16 @@
-#include "aoo/aoo.h"
-#include "aoo/aoo_server.hpp"
+#include "aoo.h"
+#include "aoo_server.hpp"
 
-#include "common/udp_server.hpp"
-#include "common/tcp_server.hpp"
+#include "common/net_utils.hpp"
 #include "common/sync.hpp"
 
 #include <stdlib.h>
 #include <string.h>
 #include <iostream>
+#include <sstream>
+#include <optional>
+#include <string_view>
+#include <thread>
 
 #ifdef _WIN32
 # include <windows.h>
@@ -25,17 +28,20 @@ AooLogLevel g_loglevel = kAooLogLevelWarning;
 void log_function(AooLogLevel level, const AooChar *msg) {
     if (level <= g_loglevel) {
         switch (level) {
+        case kAooLogLevelError:
+            std::cout << "[error] ";
+            break;
+        case kAooLogLevelWarning:
+            std::cout << "[warning] ";
+            break;
+        case kAooLogLevelInfo:
+            std::cout << "[info] ";
+            break;
         case kAooLogLevelDebug:
             std::cout << "[debug] ";
             break;
         case kAooLogLevelVerbose:
             std::cout << "[verbose] ";
-            break;
-        case kAooLogLevelWarning:
-            std::cout << "[warning] ";
-            break;
-        case kAooLogLevelError:
-            std::cout << "[error] ";
             break;
         default:
             break;
@@ -44,80 +50,56 @@ void log_function(AooLogLevel level, const AooChar *msg) {
     }
 }
 
-AooServer::Ptr g_aoo_server;
+void AOO_CALL handle_event(void *, const AooEvent *event, AooThreadLevel level) {
+    switch (event->type) {
+    case kAooEventClientLogin:
+    {
+        auto e = event->clientLogin;
+        if (e.error == kAooOk) {
+            std::cout << "New client with ID " << e.id << std::endl;
+        } else {
+            std::cout << "Client " << e.id << " failed to log in" << std::endl;
+        }
+        break;
+    }
+    case kAooEventClientLogout:
+    {
+        auto e = event->clientLogout;
+        if (e.errorCode == kAooOk) {
+            std::cout << "Client " << e.id << " logged out" << std::endl;
+        } else {
+            std::cout << "Client " << e.id << " logged out after error: "
+                      << e.errorMessage << std::endl;
+        }
+        break;
+    }
+    case kAooEventGroupAdd:
+    {
+        std::cout << "Add new group '" << event->groupAdd.name << "'" << std::endl;
+        break;
+    }
+    case kAooEventGroupRemove:
+    {
+        std::cout << "Remove group '" << event->groupRemove.name << "'" << std::endl;
+        break;
+    }
+    default:
+        break;
+    }
+}
 
-int g_error = 0;
+AooServer::Ptr g_server;
+
+AooError g_error_code = 0;
+char g_error_message[256] = {};
 aoo::sync::semaphore g_semaphore;
 
-void stop_server(int error) {
-    g_error = error;
+void stop_server(int error, const char *msg = nullptr) {
+    if (msg) {
+        snprintf(g_error_message, sizeof(g_error_message), "%s", msg);
+    }
+    g_error_code = error;
     g_semaphore.post();
-}
-
-aoo::udp_server g_udp_server;
-
-void handle_udp_receive(int e, const aoo::ip_address& addr,
-                        const AooByte *data, AooSize size) {
-    if (e == 0) {
-        g_aoo_server->handleUdpMessage(data, size, addr.address(), addr.length(),
-            [](void *, const AooByte *data, AooInt32 size,
-                    const void *address, AooAddrSize addrlen, AooFlag) {
-                aoo::ip_address addr((const struct sockaddr *)address, addrlen);
-                return g_udp_server.send(addr, data, size);
-            }, nullptr);
-    } else {
-        if (g_loglevel >= kAooLogLevelError)
-            std::cout << "UDP server: recv() failed: " << aoo::socket_strerror(e) << std::endl;
-        stop_server(e);
-    }
-}
-
-aoo::tcp_server g_tcp_server;
-
-AooId handle_tcp_accept(int e, const aoo::ip_address& addr) {
-    if (e == 0) {
-        // add new client
-        AooId id;
-        g_aoo_server->addClient([](void *, AooId client, const AooByte *data, AooSize size) {
-            return g_tcp_server.send(client, data, size);
-        }, nullptr, &id);
-        if (g_loglevel >= kAooLogLevelVerbose) {
-            std::cout << "Add new client " << id << std::endl;
-        }
-        return id;
-    } else {
-        // error
-        if (g_loglevel >= kAooLogLevelError)
-            std::cout << "TCP server: accept() failed: " << aoo::socket_strerror(e) << std::endl;
-    #if 1
-        stop_server(e);
-    #endif
-        return kAooIdInvalid;
-    }
-}
-
-void handle_tcp_receive(int e, AooId client, const aoo::ip_address& addr,
-                        const AooByte *data, AooSize size) {
-    if (e == 0 && size > 0) {
-        // handle client message
-        if (auto err = g_aoo_server->handleClientMessage(client, data, size); err != kAooOk) {
-            // remove misbehaving client
-            g_aoo_server->removeClient(client);
-            g_tcp_server.close(client);
-            if (g_loglevel >= kAooLogLevelWarning)
-                std::cout << "Close client " << client << " after error: " << aoo_strerror(err) << std::endl;
-        }
-    } else {
-        // close client
-        if (e != 0) {
-            if (g_loglevel >= kAooLogLevelWarning)
-                std::cout << "Close client after error: " << aoo::socket_strerror(e) << std::endl;
-        } else {
-            if (g_loglevel >= kAooLogLevelVerbose)
-                std::cout << "Client " << client << " has disconnected" << std::endl;
-        }
-        g_aoo_server->removeClient(client);
-    }
 }
 
 #ifdef _WIN32
@@ -162,24 +144,73 @@ void print_usage() {
         << "Options:\n"
         << "  -h, --help             display help and exit\n"
         << "  -v, --version          print version and exit\n"
-        << "  -p, --port             port number (default = " << AOO_DEFAULT_SERVER_PORT << ")\n"
+        << "  -p, --port=PORT        port number (default = " << AOO_DEFAULT_SERVER_PORT << ")\n"
+        << "  -P, --password=PWD     password\n"
         << "  -r, --relay            enable server relay\n"
         << "  -l, --log-level=LEVEL  set log level\n"
         << std::endl;
 }
 
-bool check_arguments(const char **argv, int argc, int numargs) {
-    if (argc > numargs) {
-        return true;
-    } else {
-        std::cout << "Missing argument(s) for option '" << argv[0] << "'";
-        return false;
+// match option with a single argument
+template<typename T>
+std::optional<T> match_option(const char **& argv, int& argc,
+                              const char* short_option, const char* long_option) {
+    assert(argc > 0);
+    if ((short_option && !strcmp(argv[0], short_option))
+            || (long_option && !strcmp(argv[0], long_option))) {
+        // -f <arg> or --foo <arg>
+        if (argc < 2) {
+            std::stringstream msg;
+            msg << "Missing argument for option '" << argv[0] << "'";
+            throw std::runtime_error(msg.str());
+        }
+        T result;
+        std::stringstream ss;
+        ss << argv[1];
+        ss >> result;
+        if (ss) {
+            argv += 2; argc -= 2;
+            return result;
+        } else {
+            std::stringstream msg;
+            msg << "Bad argument '" << argv[1] << "' for option '" << argv[0] << "'";
+            throw std::runtime_error(msg.str());
+        }
+    } else if (long_option) {
+        // --foo=<arg>
+        std::string_view str(argv[0]);
+        if (auto pos = str.find('='); pos != std::string::npos) {
+            if (auto opt = str.substr(0, pos); opt == long_option) {
+                auto arg = str.substr(pos + 1);
+                T result;
+                std::stringstream ss;
+                ss << arg;
+                ss >> result;
+                if (ss) {
+                    argv++; argc--;
+                    return result;
+                } else {
+                    std::stringstream msg;
+                    msg << "Bad argument '" << arg << "' for option '" << opt << "'";
+                    throw std::runtime_error(msg.str());
+                }
+            }
+        }
     }
+    return std::nullopt;
 }
 
-bool match_option(const char *str, const char *short_option, const char *long_option) {
-    return (short_option && !strcmp(str, short_option))
-           || (long_option && !strcmp(str, long_option));
+// match option without argument
+bool match_option(const char **& argv, int& argc,
+                  const char* short_option, const char* long_option) {
+    assert(argc > 0);
+    if ((short_option && !strcmp(argv[0], short_option))
+        || (long_option && !strcmp(argv[0], long_option))) {
+        argv++; argc--;
+        return true;
+    } else {
+        return false;
+    }
 }
 
 int main(int argc, const char **argv) {
@@ -198,49 +229,54 @@ int main(int argc, const char **argv) {
     // parse command line options
     int port = AOO_DEFAULT_SERVER_PORT;
     bool relay = false;
+    std::string password;
 
     argc--; argv++;
 
     try {
         while ((argc > 0) && (argv[0][0] == '-')) {
-            if (match_option(argv[0], "-h", "--help")) {
+            if (match_option(argv, argc, "-h", "--help")) {
                 print_usage();
                 return EXIT_SUCCESS;
-            } else if (match_option(argv[0], "-v", "--version")) {
+            } else if (match_option(argv, argc, "-v", "--version")) {
                 std::cout << "aooserver " << aoo_getVersionString() << std::endl;
                 return EXIT_SUCCESS;
-            } else if (match_option(argv[0], "-p", "--port")) {
-                if (!check_arguments(argv, argc, 1)) {
-                    return EXIT_FAILURE;
-                }
-                port = std::stoi(argv[1]);
+            } else if (auto arg = match_option<int>(argv, argc, "-p", "--port")) {
+                port = *arg;
                 if (port <= 0 || port > 65535) {
                     std::cout << "Port number " << port << " out of range" << std::endl;
                     return EXIT_FAILURE;
                 }
-                argc--; argv++;
-            } else if (match_option(argv[0], "-r", "--relay")) {
+            } else if (auto arg = match_option<std::string>(argv, argc, "-P", "--password")) {
+                password = *arg;
+            } else if (match_option(argv, argc, "-r", "--relay")) {
                 relay = true;
-            } else if (match_option(argv[0], "-l", "--log-level")) {
-                if (!check_arguments(argv, argc, 1)) {
+            } else if (auto arg = match_option<int>(argv, argc, "-l", "--log-level")) {
+                auto level = *arg;
+                if (level < kAooLogLevelSilent || level > kAooLogLevelVerbose) {
+                    std::cout << "Log level " << level << " out of range" << std::endl;
                     return EXIT_FAILURE;
                 }
-                g_loglevel = std::stoi(argv[1]);
-                argc--; argv++;
+                g_loglevel = level;
             } else {
                 std::cout << "Unknown command line option '" << argv[0] << "'" << std::endl;
                 print_usage();
                 return EXIT_FAILURE;
             }
-            argc--; argv++;
+        }
+        if (argc > 0) {
+            std::cout << "Ignoring excess arguments: ";
+            for (int i = 0; i < argc; ++i) {
+                std::cout << argv[i] << " ";
+            }
+            std::cout << std::endl;
         }
     } catch (const std::exception& e) {
-        std::cout << "Bad argument for option '" << argv[0] << "'" << std::endl;
+        std::cout << e.what() << std::endl;
         return EXIT_FAILURE;
     }
 
     AooSettings settings;
-    AooSettings_init(&settings);
     settings.logFunc = log_function;
     if (auto err = aoo_initialize(&settings); err != kAooOk) {
         std::cout << "Could not initialize AOO library: "
@@ -248,72 +284,93 @@ int main(int argc, const char **argv) {
         return EXIT_FAILURE;
     }
 
-    AooError err;
-    g_aoo_server = AooServer::create(&err);
-    if (!g_aoo_server) {
-        std::cout << "Could not create AooServer: "
-                  << aoo_strerror(err) << std::endl;
+    g_server = AooServer::create();
+    if (!g_server) {
+        std::cout << "Could not create AooServer" << std::endl;
         return EXIT_FAILURE;
     }
 
-    // setup UDP server
-    // TODO: increase socket receive buffer for relay? Use threaded receive?
-    try {
-        g_udp_server.start(port, handle_udp_receive);
-    } catch (const std::exception& e) {
-        std::cout << "Could not start UDP server: " << e.what() << std::endl;
+    // we only need the event handler for logging
+    if (g_loglevel >= kAooLogLevelInfo) {
+        g_server->setEventHandler(handle_event, nullptr, kAooEventModeCallback);
+    }
+
+    if (!password.empty()) {
+        g_server->setPassword(password.c_str());
+    }
+
+    AooServerSettings server_settings;
+    server_settings.portNumber = port;
+
+    auto err = g_server->setup(server_settings);
+    if (err != kAooOk) {
+        std::string msg;
+        if (err == kAooErrorSocket) {
+            msg = aoo::socket::strerror(aoo::socket::get_last_error());
+        } else {
+            msg = aoo_strerror(err);
+        }
+        std::cout << "Could not setup AooServer: " << msg << std::endl;
         return EXIT_FAILURE;
     }
 
-    // setup TCP server
-    try {
-        g_tcp_server.start(port, handle_tcp_accept, handle_tcp_receive);
-    } catch (const std::exception& e) {
-        std::cout << "Could not start TCP server: " << e.what() << std::endl;
-        return EXIT_FAILURE;
-    }
+    g_server->setUseInternalRelay(relay);
 
-    // setup AooServer
-    auto flags = aoo::socket_family(g_udp_server.socket()) == aoo::ip_address::IPv6 ?
-                     kAooSocketDualStack : kAooSocketIPv4;
-
-    if (auto err = g_aoo_server->setup(port, flags); err != kAooOk) {
-        std::cout << "Could not setup AooServer: " << aoo_strerror(err) << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    g_aoo_server->setServerRelay(relay);
-
-    // finally start network threads
-    auto udp_thread = std::thread([]() {
-        g_udp_server.run();
-    });
-    auto tcp_thread = std::thread([]() {
-        g_tcp_server.run();
-    });
-
-    if (g_loglevel >= kAooLogLevelVerbose) {
+    if (g_loglevel >= kAooLogLevelInfo) {
         std::cout << "Listening on port " << port << std::endl;
     }
+
+    // run server threads
+    // NB: we *could* just block on the run() method, but then there
+    // would be no "safe" way to break from a signal/control handler.
+    auto thread = std::thread([]() {
+        auto err = g_server->run(kAooInfinite);
+        if (err != kAooOk) {
+            std::string msg;
+            if (err == kAooErrorSocket) {
+                msg = aoo::socket::strerror(aoo::socket::get_last_error());
+            } else {
+                msg = aoo_strerror(err);
+            }
+            // break from the main thread
+            stop_server(err, msg.c_str());
+        }
+    });
+
+    auto udp_thread = std::thread([]() {
+        auto err = g_server->receive(kAooInfinite);
+        if (err != kAooOk) {
+            std::string msg;
+            if (err == kAooErrorSocket) {
+                msg = aoo::socket::strerror(aoo::socket::get_last_error());
+            } else {
+                msg = aoo_strerror(err);
+            }
+            // break from the main thread
+            stop_server(err, msg.c_str());
+        }
+    });
 
     // wait for stop signal
     g_semaphore.wait();
 
-    if (g_error == 0) {
+    if (g_error_code == 0) {
         std::cout << "Program stopped by the user" << std::endl;
     } else {
         std::cout << "Program stopped because of an error: "
-                  << aoo::socket_strerror(g_error) << std::endl;
+                  << g_error_message << std::endl;
     }
 
-    // stop UDP and TCP server and exit
-    g_udp_server.stop();
-    udp_thread.join();
-
-    g_tcp_server.stop();
-    tcp_thread.join();
+    // stop server and join threads
+    g_server->stop();
+    if (thread.joinable()) {
+        thread.join();
+    }
+    if (udp_thread.joinable()) {
+        udp_thread.join();
+    }
 
     aoo_terminate();
 
-    return EXIT_SUCCESS;
+    return g_error_code == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

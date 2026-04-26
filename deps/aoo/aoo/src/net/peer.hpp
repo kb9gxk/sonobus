@@ -2,40 +2,64 @@
 
 #include "detail.hpp"
 #include "message_buffer.hpp"
+#include "ping_timer.hpp"
 
 namespace aoo {
 namespace net {
+
+// OSC peer message:
+const int32_t kMessageMaxAddrSize = kAooMsgDomainLen + kAooMsgPeerLen + 16 + kAooMsgDataLen;
+// address pattern string: max 16 bytes
+// typetag string: max. 12 bytes
+// args (including type + blob size): max. 44 bytes
+const int32_t kMessageHeaderSize = kMessageMaxAddrSize + 56;
+
+// binary peer message:
+// args: 28 bytes (max.)
+const int32_t kBinMessageHeaderSize = kAooBinMsgLargeHeaderSize + 28;
 
 class Client;
 
 struct message;
 
 struct message_packet {
-    int32_t type;
+    AooDataType type;
     int32_t size;
     const AooByte *data;
     time_tag tt;
     int32_t sequence;
-    int32_t totalsize;
-    int32_t nframes;
-    int32_t frame;
+    int32_t total_size;
+    int32_t num_frames;
+    int32_t frame_index;
     bool reliable;
 };
 
 struct message_ack {
-    int32_t seq;
-    int32_t frame;
+    int32_t sequence;
+    int32_t frame_index;
+};
+
+struct peer_args {
+    std::string_view group_name;
+    std::string_view user_name;
+    AooId group_id;
+    AooId user_id;
+    AooId local_id;
+    AooFlag flags;
+    std::string_view version_string;
+    const AooData *metadata;
+    ip_address::ip_type address_family;
+    bool use_ipv4_mapped;
+    bool binary;
+    ip_address_list address_list;
+    ip_address_list user_relay;
+    ip_address_list relay_list;
 };
 
 class peer {
 public:
     // NB: be must set everything in the constructor to avoid race conditions!
-    peer(const std::string& group_name, AooId group_id,
-         const std::string& user_name, AooId user_id,
-         const std::string& version, AooFlag flags, const AooData *metadata,
-         ip_address::ip_type address_family, bool use_ipv4_mapped,
-         ip_address_list&& addrlist, AooId local_id,
-         ip_address_list&& user_relay, const ip_address_list& relay_list);
+    peer(peer_args&& args);
 
     ~peer();
 
@@ -45,9 +69,9 @@ public:
 
     bool match(const ip_address& addr) const;
 
-    bool match(const std::string& group) const;
+    bool match(std::string_view group) const;
 
-    bool match(const std::string& group, const std::string& user) const;
+    bool match(std::string_view group, std::string_view user) const;
 
     bool match(AooId group) const;
 
@@ -79,11 +103,12 @@ public:
 
     const aoo::metadata& metadata() const { return metadata_; }
 
-    void send(Client& client, const sendfn& fn, time_tag now);
+    void send(Client& client, const sendfn& fn, time_tag now,
+              const AooPingSettings& settings);
 
-    void send_message(const message& msg, const sendfn& fn, bool binary);
+    void send_message(const message& msg, const sendfn& fn, int32_t packet_size, bool binary);
 
-    void handle_osc_message(Client& client, const char *pattern,
+    void handle_osc_message(Client& client, std::string_view pattern,
                             osc::ReceivedMessageArgumentIterator it,
                             int remaining, const ip_address& addr);
 
@@ -108,7 +133,8 @@ private:
 
     void handle_ack(Client& client, const AooByte *data, AooSize size);
 
-    void do_send(Client& client, const sendfn& fn, time_tag now);
+    void do_send(Client& client, const sendfn& fn, time_tag now,
+                 const AooPingSettings& settings);
 
     void send_packet_osc(const message_packet& frame, const sendfn& fn) const;
 
@@ -142,28 +168,32 @@ private:
     AooFlag flags_;
     std::string version_;
     ip_address::ip_type address_family_;
+    bool binary_;
     bool use_ipv4_mapped_;
     bool timeout_ = false;
+    bool active_ = true;
     aoo::metadata metadata_;
     ip_address_list addrlist_;
     ip_address_list user_relay_;
     ip_address_list relay_list_;
     ip_address real_address_; // IPv4-mapped if peer-to-peer, unmapped if relayed
     ip_address relay_address_;
-    time_tag start_time_;
-    double last_pingtime_ = 0;
+    ping_timer ping_timer_;
+    aoo::time_tag next_handshake_;
+    aoo::time_tag handshake_deadline_;
     time_tag ping_tt1_;
+    time_tag ping_tt2_;
     std::atomic<float> average_rtt_{0};
     std::atomic<bool> connected_{false};
     std::atomic<bool> got_ping_{false};
-    std::atomic<bool> binary_{false};
+    std::atomic<bool> binary_ack_{false};
     int32_t next_sequence_reliable_ = 0;
     int32_t next_sequence_unreliable_ = 0;
     message_send_buffer send_buffer_;
     message_receive_buffer receive_buffer_;
     received_message current_msg_;
-    aoo::unbounded_mpsc_queue<message_ack> send_acks_;
-    aoo::unbounded_mpsc_queue<message_ack> received_acks_;
+    lockfree::concurrent_queue<message_ack> send_acks_;
+    lockfree::concurrent_queue<message_ack> received_acks_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const peer& p) {

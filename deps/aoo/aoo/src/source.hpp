@@ -4,9 +4,9 @@
 
 #pragma once
 
-#include "aoo/aoo_source.hpp"
+#include "aoo_source.hpp"
 #if AOO_NET
-# include "aoo/aoo_client.hpp"
+# include "aoo_client.hpp"
 #endif
 
 #include "common/lockfree.hpp"
@@ -23,8 +23,8 @@
 #include "resampler.hpp"
 #include "time_dll.hpp"
 
-#include "oscpack/osc/OscOutboundPacketStream.h"
-#include "oscpack/osc/OscReceivedElements.h"
+#include "osc/OscOutboundPacketStream.h"
+#include "osc/OscReceivedElements.h"
 
 #include <list>
 
@@ -59,12 +59,14 @@ struct sink_request {
     union {
         struct {
             int32_t stream;
+            int32_t offset;
         } stop;
         struct {
             int32_t token;
         } decline;
         struct {
-            AooNtpTime time;
+            AooNtpTime tt1;
+            AooNtpTime tt2;
         } pong;
     };
 };
@@ -73,12 +75,12 @@ struct sink_request {
 // has to be synchronized with any format change.
 struct sink_desc {
 #if AOO_NET
-    sink_desc(const ip_address& addr, int32_t id,
-              AooId stream_id, const ip_address& relay)
-        : ep(addr, id, relay), stream_id_(stream_id) {}
+    sink_desc(const ip_address& addr, const ip_address& relay,
+              int32_t id, bool binary, AooId stream_id)
+        : ep(addr, relay, id, binary), stream_id_(stream_id) {}
 #else
-    sink_desc(const ip_address& addr, int32_t id, AooId stream_id)
-        : ep(addr, id), stream_id_(stream_id) {}
+    sink_desc(const ip_address& addr, int32_t id, bool binary, AooId stream_id)
+        : ep(addr, id, binary), stream_id_(stream_id) {}
 #endif // USE_AOO_NEt
     sink_desc(const sink_desc& other) = delete;
     sink_desc& operator=(const sink_desc& other) = delete;
@@ -97,11 +99,15 @@ struct sink_desc {
         return channel_.load(std::memory_order_relaxed);
     }
 
-    // called while locked
+    // a new stream has been started by the user;
+    // called while (try-)locked
     void start();
 
-    void stop(Source& s);
+    // the stream has been stopped by the user
+    void stop(Source& s, int32_t offset);
 
+    // (de)activate a source; if the stream is running,
+    // this will also queue a /start resp. /stop message.
     void activate(Source& s, bool b);
 
     bool is_active() const {
@@ -116,10 +122,12 @@ struct sink_desc {
 
     void handle_uninvite(Source& s, AooId token, bool accept);
 
+    // tell that we need to send a /start message
     void notify_start() {
         needstart_.exchange(true, std::memory_order_release);
     }
 
+    // check if we need to send a /start message
     bool need_start() {
         return needstart_.exchange(false, std::memory_order_acquire);
     }
@@ -129,7 +137,7 @@ struct sink_desc {
     }
 
     bool get_data_request(data_request& r){
-        return data_requests_.try_pop(r);
+        return data_requests_.pop(r);
     }
 private:
     std::atomic<int32_t> channel_{0};
@@ -137,7 +145,7 @@ private:
     int32_t invite_token_{kAooIdInvalid};
     int32_t uninvite_token_{kAooIdInvalid};
     std::atomic<bool> needstart_{false};
-    aoo::unbounded_mpsc_queue<data_request> data_requests_;
+    aoo::concurrent_queue<data_request, false> data_requests_;
 };
 
 struct cached_sink {
@@ -152,9 +160,9 @@ struct cached_sink {
 template<typename Alloc>
 struct stream_message : Alloc {
     stream_message() = default;
-    stream_message(uint64_t _time, AooDataType _type,
-                   const char *_data, AooSize _size)
-        : time(_time), type(_type), size(_size) {
+    stream_message(uint64_t _time, int32_t _channel,
+                   AooDataType _type, const char *_data, int32_t _size)
+        : time(_time), channel(_channel), type(_type), size(_size) {
         data = (char *)Alloc::allocate(size);
         memcpy(data, _data, size);
     }
@@ -163,15 +171,16 @@ struct stream_message : Alloc {
         if (data) Alloc::deallocate(data, size);
     }
 
-    stream_message(stream_message&& other)
-        : time(other.time), type(other.type),
-          data(other.data), size(other.size) {
+    stream_message(stream_message&& other) noexcept
+        : time(other.time), channel(other.channel),
+          type(other.type), data(other.data), size(other.size) {
         other.data = nullptr;
         other.size = 0;
     }
 
-    stream_message& operator=(stream_message&& other) {
+    stream_message& operator=(stream_message&& other) noexcept {
         time = other.time;
+        channel = other.channel;
         type = other.type;
         data = other.data;
         size = other.size;
@@ -181,9 +190,10 @@ struct stream_message : Alloc {
     }
 
     uint64_t time = 0;
+    int32_t channel = 0;
     AooDataType type = 0;
     char *data = nullptr;
-    AooSize size = 0;
+    int32_t size = 0;
 };
 
 using rt_stream_message = stream_message<rt_allocator<char>>;
@@ -224,15 +234,15 @@ class Source final : public AooSource, rt_memory_pool_client {
 
     AooError AOO_CALL pollEvents() override;
 
-    AooError AOO_CALL startStream(const AooData *metadata) override;
+    AooError AOO_CALL startStream(AooInt32 sampleOffset, const AooData *metadata) override;
 
-    AooError AOO_CALL stopStream() override;
+    AooError AOO_CALL stopStream(AooInt32 sampleOffset) override;
 
     AooError AOO_CALL addSink(const AooEndpoint& sink, AooBool active) override;
 
     AooError AOO_CALL removeSink(const AooEndpoint& sink) override;
 
-    AooError AOO_CALL removeAll() override;
+    AooError AOO_CALL removeAllSinks() override;
 
     AooError AOO_CALL handleInvite(const AooEndpoint& sink, AooId token, AooBool accept) override;
 
@@ -241,14 +251,16 @@ class Source final : public AooSource, rt_memory_pool_client {
     AooError AOO_CALL control(AooCtl ctl, AooIntPtr index,
                               void *ptr, AooSize size) override;
 
-    AooError AOO_CALL codecControl(AooCtl ctl, AooIntPtr index, void *ptr, AooSize size) override;
+    AooError AOO_CALL codecControl(const AooChar *codec, AooCtl ctl, AooIntPtr index,
+                                   void *ptr, AooSize size) override;
 
     //----------------------- semi-public methods -------------------//
 
     AooId id() const { return id_.load(); }
 
     bool is_running() const {
-        return state_.load(std::memory_order_acquire) == stream_state::run;
+        auto state = stream_state_.load(std::memory_order_acquire) & stream_state_mask;
+        return state == stream_state::run;
     }
 
     void notify_start();
@@ -261,10 +273,13 @@ class Source final : public AooSource, rt_memory_pool_client {
     using scoped_shared_lock = sync::scoped_shared_lock<sync::shared_mutex>;
     using scoped_spinlock = sync::scoped_lock<sync::spinlock>;
 
+    static constexpr int32_t invalid_stream = kAooIdInvalid;
+
     // settings
     parameter<AooId> id_;
-    int32_t nchannels_ = 0;
-    int32_t blocksize_ = 0;
+    uint32_t flags_ = 0;
+    int16_t nchannels_ = 0;
+    int16_t blocksize_ = 0;
     int32_t samplerate_ = 0;
 #if AOO_NET
     AooClient *client_ = nullptr;
@@ -272,56 +287,66 @@ class Source final : public AooSource, rt_memory_pool_client {
     // audio encoder
     std::unique_ptr<AooFormat, format_deleter> format_;
     std::unique_ptr<AooCodec, encoder_deleter> encoder_;
-    AooId format_id_ {kAooIdInvalid};
-    // state
-    uint64_t process_samples_ = 0;
-    double stream_samples_ = 0;
-    int32_t sequence_ = 0;
-    std::atomic<float> xrunblocks_{0};
-    std::atomic<float> last_ping_time_{0};
-    std::atomic<bool> needstart_{false};
-    enum class stream_state {
+    AooId format_id_ = kAooIdInvalid;
+    int32_t sequence_ = invalid_stream;
+    // metadata
+    // state_ actually is a aoo::flat_metadata pointer,
+    // but the lowest 4 bits contain the state.
+    using stream_state_type = uintptr_t;
+    static constexpr stream_state_type stream_state_mask = 15;
+    static constexpr size_t stream_state_bits = 4;
+    static constexpr stream_state_type metadata_mask = ~15;
+    enum stream_state : stream_state_type {
         stop,
         start,
         run,
         idle
     };
-    std::atomic<stream_state> state_{stream_state::idle};
-    // metadata
-    rt_metadata_ptr metadata_;
-    bool metadata_accepted_{false};
-    sync::spinlock metadata_lock_;
-    // timing
-    parameter<AooSampleRate> realsr_{0};
-    time_dll dll_;
-    std::atomic<AooNtpTime> start_time_{0};
-    std::atomic<float> elapsed_time_ = 0;
-    void reset_timer() {
-        start_time_.store(0);
+    stream_state_type stream_state() const {
+        return stream_state_.load(std::memory_order_relaxed) & stream_state_mask;
     }
+    std::atomic<stream_state_type> stream_state_{stream_state::idle};
+    rt_metadata_ptr metadata_;
+    // timing
+    uint64_t process_samples_ = 0;
+    double stream_samples_ = 0;
+    aoo::time_tag stream_tt_;
+    aoo::time_tag start_tt_;
+    std::atomic<float> xrunblocks_{0};
+    std::atomic<float> last_ping_time_{0};
+    std::atomic<float> elapsed_time_ = 0;
+    std::atomic<bool> need_start_{false};
+    std::atomic<bool> need_reset_timer_{false};
+    void reset_timer() {
+        need_reset_timer_.store(true);
+    }
+    // timing
+    time_dll dll_;
+    parameter<AooSampleRate> realsr_{0};
     // buffers and queues
     aoo::vector<AooByte> sendbuffer_;
     dynamic_resampler resampler_;
     struct block_data {
+        static constexpr size_t header_size = 8;
         double sr;
         AooSample data[1];
     };
-    aoo::spsc_queue<char> audioqueue_;
+    aoo::spsc_queue<char> audio_queue_;
     history_buffer history_;
-    using message_queue = lockfree::unbounded_mpsc_queue<rt_stream_message, aoo::rt_allocator<rt_stream_message>>;
+    using message_queue = lockfree::concurrent_queue<rt_stream_message, false, aoo::rt_allocator<rt_stream_message>>;
     message_queue message_queue_;
     using message_prio_queue = priority_queue<nrt_stream_message, stream_message_comp, aoo::allocator<nrt_stream_message>>;
     message_prio_queue message_prio_queue_;
     // events
-    using event_queue = lockfree::unbounded_mpsc_queue<event_ptr, aoo::rt_allocator<event_ptr>>;
-    event_queue eventqueue_;
-    AooEventHandler eventhandler_ = nullptr;
-    void *eventcontext_ = nullptr;
-    AooEventMode eventmode_ = kAooEventModeNone;
+    using event_queue = lockfree::concurrent_queue<event_ptr, true, aoo::rt_allocator<event_ptr>>;
+    event_queue event_queue_;
+    AooEventHandler event_handler_ = nullptr;
+    void *event_context_ = nullptr;
+    AooEventMode event_mode_ = kAooEventModeNone;
     // requests
-    aoo::unbounded_mpsc_queue<sink_request> requests_;
+    aoo::concurrent_queue<sink_request, true> requests_;
     // sinks
-    using sink_list = aoo::rcu_list<sink_desc>;
+    using sink_list = aoo::concurrent_list<sink_desc>;
     using sink_lock = std::unique_lock<sink_list>;
     sink_list sinks_;
     sync::mutex sink_mutex_;
@@ -331,14 +356,18 @@ class Source final : public AooSource, rt_memory_pool_client {
     // options
     parameter<float> buffersize_{ AOO_SOURCE_BUFFER_SIZE };
     parameter<float> resend_buffersize_{ AOO_RESEND_BUFFER_SIZE };
-    parameter<int32_t> packetsize_{ AOO_PACKET_SIZE };
+    parameter<int32_t> packet_size_{ AOO_PACKET_SIZE };
     parameter<int32_t> redundancy_{ AOO_SEND_REDUNDANCY };
     parameter<float> ping_interval_{ AOO_PING_INTERVAL };
     parameter<float> dll_bandwidth_{ AOO_DLL_BANDWIDTH };
+    parameter<float> tt_interval_{ AOO_STREAM_TIME_SEND_INTERVAL };
     parameter<bool> dynamic_resampling_{ AOO_DYNAMIC_RESAMPLING };
-    parameter<bool> binary_{ AOO_BINARY_DATA_MSG };
+    parameter<bool> binary_{ AOO_BINARY_FORMAT };
+    parameter<char> resample_method_{ AOO_RESAMPLE_MODE };
 
     // helper methods
+    static void free_metadata(stream_state_type state);
+
     sink_desc * do_add_sink(const ip_address& addr, AooId id, AooId stream_id);
 
     bool do_remove_sink(const ip_address& addr, AooId id);
@@ -355,13 +384,15 @@ class Source final : public AooSource, rt_memory_pool_client {
 
     bool need_resampling() const;
 
-    void make_new_stream(bool notify);
+    void restart_stream();
 
-    void add_xrun(double nblocks);
+    void make_new_stream(aoo::time_tag tt, AooData *md);
+
+    void add_xrun(int32_t nsamples);
 
     void handle_xrun(int32_t nsamples);
 
-    void update_audioqueue();
+    void update_audio_queue();
 
     void update_resampler();
 

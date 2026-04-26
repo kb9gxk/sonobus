@@ -1,47 +1,52 @@
 #pragma once
 
 #include "detail.hpp"
-
-#include <bitset>
+#include "data_frame.hpp"
 
 namespace aoo {
+
+struct data_frame;
 
 struct data_packet {
     int32_t sequence;
     int32_t channel;
+    aoo::time_tag tt;
     double samplerate;
-    int32_t totalsize;
-    int32_t msgsize;
-    int32_t nframes;
-    int32_t frame;
-    const AooByte *data;
+    int32_t total_size;
+    int32_t msg_size;
+    int32_t num_frames;
+    int32_t frame_index;
+    union {
+        const AooByte* data;
+        data_frame* frame;
+    };
     int32_t size;
     uint32_t flags;
 };
 
 //---------------------- sent_block ---------------------------//
 
+// NB: unlike received_block, we can use a continuous buffer,
+// as we are in control of how blocks are devided into frames.
 class sent_block {
 public:
     // methods
-    void set(const data_packet& d, int32_t framesize);
+    void set(const data_packet& d, int16_t frame_size_);
 
     const AooByte* data() const { return buffer_.data(); }
     int32_t size() const { return buffer_.size(); }
 
-    int32_t num_frames() const { return numframes_; }
-    int32_t frame_size(int32_t which) const;
-    int32_t get_frame(int32_t which, AooByte * data, int32_t n) const;
+    int32_t get_frame(int32_t index, AooByte* data, int32_t count) const;
 
     // data
     int32_t sequence = -1;
     int32_t message_size = 0;
     double samplerate = 0;
     uint32_t flags = 0;
+    int16_t num_frames = 0;
+    int16_t frame_size = 0;
 protected:
     aoo::vector<AooByte> buffer_;
-    int32_t numframes_ = 0;
-    int32_t framesize_ = 0;
 };
 
 //---------------------------- history_buffer ------------------------------//
@@ -67,6 +72,8 @@ private:
     int32_t size_ = 0;
 };
 
+
+
 //---------------------------- received_block ------------------------------//
 
 // LATER use a (sorted) linked list of data frames (coming from the network thread)
@@ -80,41 +87,62 @@ private:
 
 class received_block {
 public:
-    void reserve(int32_t size);
-
     void init(int32_t seq);
     void init(const data_packet& d);
 
-    const AooByte* data() const { return buffer_.data(); }
-    int32_t size() const { return buffer_.size(); }
-
-    int32_t num_frames() const { return numframes_; }
-    bool has_frame(int32_t which) const {
-        return !frames_[which];
+    void clear(data_frame_allocator& alloc) {
+        frames_.clear(alloc);
+        received_frames = 0;
     }
-    int32_t received_frames() const {
-        return std::max<int32_t>(0, numframes_ - frames_.count());
-    }
-    void add_frame(int32_t which, const AooByte *data, int32_t n);
 
-    int32_t resend_count() const { return numtries_; }
-    bool complete() const { return frames_.none(); }
-    bool placeholder() const { return numframes_ < 0; }
-    bool empty() const { return numframes_ == 0; }
+    int32_t num_frames() const { return frames_.size(); }
+
+    bool has_frame(int32_t index) const {
+        return frames_.has_frame(index);
+    }
+
+    void add_frame(int32_t index, data_frame* frame) {
+        assert(!placeholder() && !complete());
+    #if AOO_DEBUG_JITTER_BUFFER
+        LOG_DEBUG("jitter buffer: add frame " << index << " with " << frame->size << " bytes");
+    #endif
+        frames_.add_frame(index, frame);
+        received_frames++;
+    }
+
+    void copy_frames(AooByte* buffer) {
+        assert(complete());
+        frames_.copy_frames(buffer, total_size);
+    }
+
+    int32_t resend_count() const { return num_tries_; }
+
+    bool complete() const { return received_frames == frames_.size(); }
+
+    bool placeholder() const { return received_frames < 0; }
+
+    bool empty() const { return frames_.size() == 0; }
+
     bool update(double time, double interval);
+
+    bool set_resent() { return !std::exchange(resent_, true); }
 
     // data
     int32_t sequence = -1;
-    int32_t channel = 0;
-    double samplerate = 0;
+    int32_t total_size = 0;
     int32_t message_size = 0;
     uint32_t flags = 0;
-protected:
-    aoo::vector<AooByte> buffer_;
-    int32_t numframes_ = 0;
-    std::bitset<256> frames_ = 0;
+    uint64_t tt = 0;
+    double samplerate = 0;
+    int16_t channel = 0;
+    int16_t received_frames = 0;
+#ifndef NDEBUG
+private:
+#endif
+    uint16_t num_tries_ = 0;
+    bool resent_ = false;
     double timestamp_ = 0;
-    int32_t numtries_ = 0;
+    data_frame_storage frames_;
 };
 
 //---------------------------- jitter_buffer ------------------------------//
@@ -163,9 +191,15 @@ public:
     using iterator = base_iterator<received_block, jitter_buffer>;
     using const_iterator = base_iterator<const received_block, const jitter_buffer>;
 
-    void clear();
+    static constexpr int32_t search_threshold = 10;
+    static constexpr int32_t sentinel = INT32_MIN;
 
-    void resize(int32_t n, int32_t maxblocksize);
+    jitter_buffer(data_frame_allocator& alloc) : alloc_(alloc) {}
+    ~jitter_buffer();
+
+    void reset();
+
+    void resize(int32_t n);
 
     bool empty() const {
         return size_ == 0;
@@ -186,8 +220,8 @@ public:
 
     void pop();
 
-    void reset_head() {
-        last_pushed_ = -1;
+    void reset_head(int32_t seq = sentinel) {
+        last_pushed_ = seq;
     }
 
     int32_t last_pushed() const {
@@ -210,6 +244,7 @@ public:
 
     friend std::ostream& operator<<(std::ostream& os, const jitter_buffer& b);
 private:
+    data_frame_allocator& alloc_;
     aoo::vector<received_block> data_;
     int32_t size_ = 0;
     int32_t head_ = 0;
