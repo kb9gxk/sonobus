@@ -1,18 +1,22 @@
 /*
   ==============================================================================
 
-   This file is part of the JUCE examples.
-   Copyright (c) 2022 - Raw Material Software Limited
+   This file is part of the JUCE framework examples.
+   Copyright (c) Raw Material Software Limited
 
    The code included in this file is provided under the terms of the ISC license
    http://www.isc.org/downloads/software-support-policy/isc-license. Permission
-   To use, copy, modify, and/or distribute this software for any purpose with or
+   to use, copy, modify, and/or distribute this software for any purpose with or
    without fee is hereby granted provided that the above copyright notice and
    this permission notice appear in all copies.
 
-   THE SOFTWARE IS PROVIDED "AS IS" WITHOUT ANY WARRANTY, AND ALL WARRANTIES,
-   WHETHER EXPRESSED OR IMPLIED, INCLUDING MERCHANTABILITY AND FITNESS FOR
-   PURPOSE, ARE DISCLAIMED.
+   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+   REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+   AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+   INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+   LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+   OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+   PERFORMANCE OF THIS SOFTWARE.
 
   ==============================================================================
 */
@@ -32,13 +36,14 @@
  dependencies:          juce_audio_basics, juce_audio_devices, juce_audio_formats,
                         juce_audio_plugin_client, juce_audio_processors,
                         juce_audio_utils, juce_core, juce_data_structures,
-                        juce_events, juce_graphics, juce_gui_basics, juce_gui_extra
- exporters:             xcode_mac, vs2022, linux_make
+                        juce_events, juce_graphics, juce_gui_basics, juce_gui_extra,
+                        juce_audio_processors_headless
+ exporters:             xcode_mac, vs2022, vs2026, linux_make
 
- moduleFlags:           JUCE_STRICT_REFCOUNTEDPOINTER=1
-                        JUCE_PLUGINHOST_LV2=1
-                        JUCE_PLUGINHOST_VST3=1
-                        JUCE_PLUGINHOST_VST=0
+ moduleFlags:           JUCE_STRICT_REFCOUNTEDPOINTER=1,
+                        JUCE_PLUGINHOST_LV2=1,
+                        JUCE_PLUGINHOST_VST3=1,
+                        JUCE_PLUGINHOST_VST=0,
                         JUCE_PLUGINHOST_AU=1
 
  type:                  AudioProcessor
@@ -79,7 +84,7 @@ public:
             return opt;
         }());
 
-        pluginFormatManager.addDefaultFormats();
+        addDefaultFormatsToManager (pluginFormatManager);
 
         if (auto savedPluginList = appProperties.getUserSettings()->getXmlValue ("pluginList"))
             pluginList.recreateFromXml (*savedPluginList);
@@ -88,7 +93,7 @@ public:
         pluginList.addChangeListener (this);
     }
 
-    bool isBusesLayoutSupported (const BusesLayout& layouts) const override
+    bool isBusesLayoutSupported (const BusesLayout& layouts) const final
     {
         const auto& mainOutput = layouts.getMainOutputChannelSet();
         const auto& mainInput  = layouts.getMainInputChannelSet();
@@ -102,7 +107,7 @@ public:
         return true;
     }
 
-    void prepareToPlay (double sr, int bs) override
+    void prepareToPlay (double sr, int bs) final
     {
         const ScopedLock sl (innerMutex);
 
@@ -115,7 +120,7 @@ public:
         }
     }
 
-    void releaseResources() override
+    void releaseResources() final
     {
         const ScopedLock sl (innerMutex);
 
@@ -125,7 +130,7 @@ public:
             inner->releaseResources();
     }
 
-    void reset() override
+    void reset() final
     {
         const ScopedLock sl (innerMutex);
 
@@ -136,12 +141,12 @@ public:
     // In this example, we don't actually pass any audio through the inner processor.
     // In a 'real' plugin, we'd need to add some synchronisation to ensure that the inner
     // plugin instance was never modified (deleted, replaced etc.) during a call to processBlock.
-    void processBlock (AudioBuffer<float>&, MidiBuffer&) override
+    void processBlock (AudioBuffer<float>&, MidiBuffer&) final
     {
         jassert (! isUsingDoublePrecision());
     }
 
-    void processBlock (AudioBuffer<double>&, MidiBuffer&) override
+    void processBlock (AudioBuffer<double>&, MidiBuffer&) final
     {
         jassert (isUsingDoublePrecision());
     }
@@ -149,18 +154,18 @@ public:
     bool hasEditor() const override                                   { return false; }
     AudioProcessorEditor* createEditor() override                     { return nullptr; }
 
-    const String getName() const override                             { return "HostPluginDemo"; }
-    bool acceptsMidi() const override                                 { return true; }
-    bool producesMidi() const override                                { return true; }
-    double getTailLengthSeconds() const override                      { return 0.0; }
+    const String getName() const final                                { return "HostPluginDemo"; }
+    bool acceptsMidi() const final                                    { return true; }
+    bool producesMidi() const final                                   { return true; }
+    double getTailLengthSeconds() const final                         { return 0.0; }
 
-    int getNumPrograms() override                                     { return 0; }
-    int getCurrentProgram() override                                  { return 0; }
-    void setCurrentProgram (int) override                             {}
-    const String getProgramName (int) override                        { return "None"; }
-    void changeProgramName (int, const String&) override              {}
+    int getNumPrograms() final                                        { return 0; }
+    int getCurrentProgram() final                                     { return 0; }
+    void setCurrentProgram (int) final                                {}
+    const String getProgramName (int) final                           { return "None"; }
+    void changeProgramName (int, const String&) final                 {}
 
-    void getStateInformation (MemoryBlock& destData) override
+    void getStateInformation (MemoryBlock& destData) final
     {
         const ScopedLock sl (innerMutex);
 
@@ -185,7 +190,7 @@ public:
         destData.replaceAll (text.toRawUTF8(), text.getNumBytesAsUTF8());
     }
 
-    void setStateInformation (const void* data, int sizeInBytes) override
+    void setStateInformation (const void* data, int sizeInBytes) final
     {
         const ScopedLock sl (innerMutex);
 
@@ -213,11 +218,10 @@ public:
         {
             if (error.isNotEmpty())
             {
-                NativeMessageBox::showMessageBoxAsync (MessageBoxIconType::WarningIcon,
-                                                       "Plugin Load Failed",
-                                                       error,
-                                                       nullptr,
-                                                       nullptr);
+                auto options = MessageBoxOptions::makeOptionsOk (MessageBoxIconType::WarningIcon,
+                                                                 "Plugin Load Failed",
+                                                                 error);
+                messageBox = AlertWindow::showScopedAsync (options, nullptr);
                 return;
             }
 
@@ -281,11 +285,12 @@ private:
     std::unique_ptr<AudioPluginInstance> inner;
     EditorStyle editorStyle = EditorStyle{};
     bool active = false;
+    ScopedMessageBox messageBox;
 
     static constexpr const char* innerStateTag = "inner_state";
     static constexpr const char* editorStyleTag = "editor_style";
 
-    void changeListenerCallback (ChangeBroadcaster* source) override
+    void changeListenerCallback (ChangeBroadcaster* source) final
     {
         if (source != &pluginList)
             return;
@@ -297,10 +302,6 @@ private:
         }
     }
 };
-
-
-constexpr const char* HostAudioProcessorImpl::innerStateTag;
-constexpr const char* HostAudioProcessorImpl::editorStyleTag;
 
 //==============================================================================
 constexpr auto margin = 10;
@@ -316,7 +317,7 @@ static void doLayout (Component* main, Component& bottom, int bottomHeight, Rect
     grid.performLayout (bounds);
 }
 
-class PluginLoaderComponent : public Component
+class PluginLoaderComponent final : public Component
 {
 public:
     template <typename Callback>
@@ -330,15 +331,15 @@ public:
         addAndMakeVisible (pluginListComponent);
         addAndMakeVisible (buttons);
 
-        const auto getCallback = [this, &list, callback = std::forward<Callback> (callback)] (EditorStyle style)
+        const auto getCallback = [this, &list, cb = std::forward<Callback> (callback)] (EditorStyle style)
         {
-            return [this, &list, callback, style]
+            return [this, &list, cb, style]
             {
                 const auto index = pluginListComponent.getTableListBox().getSelectedRow();
                 const auto& types = list.getTypes();
 
                 if (isPositiveAndBelow (index, types.size()))
-                    NullCheckedInvocation::invoke (callback, types.getReference (index), style);
+                    NullCheckedInvocation::invoke (cb, types.getReference (index), style);
             };
         };
 
@@ -352,7 +353,7 @@ public:
     }
 
 private:
-    struct Buttons : public Component
+    struct Buttons final : public Component
     {
         Buttons()
         {
@@ -394,7 +395,7 @@ private:
 };
 
 //==============================================================================
-class PluginEditorComponent : public Component
+class PluginEditorComponent final : public Component
 {
 public:
     template <typename Callback>
@@ -439,7 +440,7 @@ private:
 };
 
 //==============================================================================
-class ScaledDocumentWindow : public DocumentWindow
+class ScaledDocumentWindow final : public DocumentWindow
 {
 public:
     ScaledDocumentWindow (Colour bg, float scale)
@@ -452,7 +453,7 @@ private:
 };
 
 //==============================================================================
-class HostAudioProcessorEditor  : public AudioProcessorEditor
+class HostAudioProcessorEditor final : public AudioProcessorEditor
 {
 public:
     explicit HostAudioProcessorEditor (HostAudioProcessorImpl& owner)
@@ -504,14 +505,14 @@ public:
         currentScaleFactor = scale;
         AudioProcessorEditor::setScaleFactor (scale);
 
-        const auto posted = MessageManager::callAsync ([ref = SafePointer<HostAudioProcessorEditor> (this), scale]
+        [[maybe_unused]] const auto posted = MessageManager::callAsync ([ref = SafePointer<HostAudioProcessorEditor> (this), scale]
         {
             if (auto* r = ref.getComponent())
                 if (auto* e = r->currentEditorComponent)
                     e->setScaleFactor (scale);
         });
 
-        jassertquiet (posted);
+        jassert (posted);
     }
 
 private:
@@ -524,8 +525,8 @@ private:
         {
             auto editorComponent = std::make_unique<PluginEditorComponent> (hostProcessor.createInnerEditor(), [this]
             {
-                const auto posted = MessageManager::callAsync ([this] { clearPlugin(); });
-                jassertquiet (posted);
+                [[maybe_unused]] const auto posted = MessageManager::callAsync ([this] { clearPlugin(); });
+                jassert (posted);
             });
 
             editorComponent->setScaleFactor (currentScaleFactor);
@@ -580,7 +581,7 @@ private:
 };
 
 //==============================================================================
-class HostAudioProcessor : public HostAudioProcessorImpl
+class HostAudioProcessor final : public HostAudioProcessorImpl
 {
 public:
     bool hasEditor() const override { return true; }

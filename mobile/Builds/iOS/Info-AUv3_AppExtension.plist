@@ -30,6 +30,13 @@
     <true/>
     <key>UILaunchStoryboardName</key>
     <string>LaunchScreen</string>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+      <key>UIApplicationSupportsMultipleScenes</key>
+      <false/>
+      <key>UISceneConfigurations</key>
+      <dict/>
+    </dict>
     <key>CFBundleExecutable</key>
     <string>${EXECUTABLE_NAME}</string>
     <key>CFBundleIdentifier</key>
@@ -43,11 +50,11 @@
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.6.1</string>
+    <string>1.7.3</string>
     <key>CFBundleVersion</key>
-    <string>79</string>
+    <string>90</string>
     <key>NSHumanReadableCopyright</key>
-    <string>2023 Sonosaurus LLC</string>
+    <string>2026 Sonosaurus LLC</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>UISupportsDocumentBrowser</key>
@@ -76,7 +83,7 @@
             <key>subtype</key>
             <string>NBus</string>
             <key>version</key>
-            <integer>67073</integer>
+            <integer>67331</integer>
             <key>sandboxSafe</key>
             <true/>
             <key>tags</key>

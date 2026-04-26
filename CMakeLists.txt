@@ -19,7 +19,7 @@ endif()
 option(UniversalBinary "Build universal binary for mac" ON)
 
 if (APPLE)
-    set (CMAKE_OSX_DEPLOYMENT_TARGET "10.10" CACHE INTERNAL "")
+    set (CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE INTERNAL "")
     if (UniversalBinary)
         set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE INTERNAL "")
         #set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)        
@@ -113,6 +113,11 @@ if (APPLE)
     list (APPEND FormatsToBuild AU)
 endif()
 
+# On Linux, LV2 will be built too
+if (UNIX)
+    list (APPEND FormatsToBuild LV2)
+endif()
+
 # If you are building a VST2 or AAX plugin, CMake needs to be told where to find these SDKs on your
 # system. This setup should be done before calling `juce_add_plugin`.
 
@@ -185,7 +190,8 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
         VST3_CATEGORIES "${vst3cats}"
         AAX_CATEGORY "AAX_ePlugInCategory_None"
 
-        
+	LV2URI "https://sonobus.net/lv2/sonobus"
+	
         # mac settings
         HARDENED_RUNTIME_ENABLED TRUE
         HARDENED_RUNTIME_OPTIONS "com.apple.security.device.audio-input"
@@ -224,7 +230,7 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
 
     # platform specific stuff
     if (APPLE)
-        list (APPEND HEADER_INCLUDES deps/mac/include)
+        list (APPEND HEADER_INCLUDES deps/mac/include)       
         list (APPEND LIB_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/deps/mac/lib)
         list (APPEND PlatSourceFiles  Source/CrossPlatformUtilsMac.mm)
     elseif (WIN32)
@@ -252,7 +258,9 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
         # Linux
         list (APPEND PlatSourceFiles  Source/CrossPlatformUtilsLinux.cpp)
 	list ( APPEND PLAT_COMPILE_DEFS
-		JUCE_USE_MP3AUDIOFORMAT=1 )
+		JUCE_USE_MP3AUDIOFORMAT=1
+        JUCE_JACK=1
+        JUCE_ALSA=1 )
     endif()
 
 
@@ -306,6 +314,8 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
         Source/RunningCumulant.h
         Source/SampleEditView.cpp
         Source/SampleEditView.h
+        Source/SonoCallOutBox.cpp
+        Source/SonoCallOutBox.h
         Source/SonoChoiceButton.cpp
         Source/SonoChoiceButton.h
         Source/SonoDrawableButton.cpp
@@ -339,6 +349,8 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
         Source/SonobusPluginProcessor.cpp
         Source/SonobusPluginProcessor.h
         Source/SonobusTypes.h
+        Source/SuggestNewGroupView.cpp
+        Source/SuggestNewGroupView.h
         Source/VDONinjaView.h
         Source/VersionInfo.cpp
         Source/VersionInfo.h
@@ -436,7 +448,7 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
     # This cleans up the folder organization, especially on Xcode.
     # It tucks the Plugin varieties into a "Targets" folder and generate an Xcode Scheme manually
     # Xcode scheme generation is turned off globally to limit noise from other targets
-    # The non-hacky way of doing this is via the global PREDEFINED_TARGETS_FOLDER propety
+    # The non-hacky way of doing this is via the global PREDEFINED_TARGETS_FOLDER property
     # However that doesn't seem to be working in Xcode
     # Not all plugin types (au, vst) available on each build type (win, macos, linux)
     foreach(target ${formats} "All")
@@ -467,8 +479,6 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
         JUCE_ASIO=1
         JUCE_WASAPI=1
         JUCE_DIRECTSOUND=0
-        JUCE_JACK=1
-        JUCE_ALSA=1
         JUCE_USE_ANDROID_OBOE=1
         JUCE_USE_OBOE_STABILIZED_CALLBACK=1
         JUCE_LOAD_CURL_SYMBOLS_LAZILY=1
@@ -480,7 +490,8 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
 
     juce_add_binary_data("${target_name}_SBData" SOURCES
         Source/wordmaker.g
-        Source/DejaVuSans.ttf
+        Source/GoNotoKurrent-Regular.ttf
+	Source/DejaVuSans.ttf
         localization/localized_de.txt
         localization/localized_es.txt
         localization/localized_fr.txt
@@ -491,6 +502,10 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
         localization/localized_pt-pt.txt
         localization/localized_ko.txt
         localization/localized_ru.txt
+        localization/localized_zh-hans.txt
+        images/arrow-up-narrow.svg
+        images/arrow-down-narrow.svg
+        images/dots.svg
         images/bar_click.wav
         images/beat_click.wav
         images/chat.svg
@@ -518,8 +533,8 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
         images/incoming_disallowed.svg
         images/keyboard.svg
         images/keyboard_disabled.svg
-	images/keypad-num-disabled.svg
-	images/keypad-num.svg
+        images/keypad-num-disabled.svg
+        images/keypad-num.svg
         images/lgc_bar.wav
         images/link.svg
         images/link_all.svg
@@ -575,6 +590,7 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
         images/triangle_disclosure.svg
         images/triangle_disclosure_right.svg
         images/urei_main.wav
+        images/videocam-outline.svg
         images/x_icon.svg
     )
 
