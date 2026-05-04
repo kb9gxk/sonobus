@@ -210,7 +210,8 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
 
 
     set (HEADER_INCLUDES
-        subdeps/aoo_net
+        subdeps/aoo/aoo/src/net
+        subdeps/aoo
         subdeps/aoo/include
         subdeps/aoo/deps
     )
@@ -641,8 +642,8 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
             ff_meters
             
             ${target_name}_SBData
-            AOO_STATIC
-            opus
+            aoo aoo_common
+            # opus
         PUBLIC
             juce::juce_recommended_config_flags
             juce::juce_recommended_lto_flags

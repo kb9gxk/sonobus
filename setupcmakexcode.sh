@@ -1,6 +1,8 @@
 #!/bin/bash
 
-DEFS=""
+# Warning is default
+DEFS="-DAOO_LOG_LEVEL=Verbose"
+#DEFS="-DAOO_LOG_LEVEL=Warning"
 
 if [ -n "${AAX_SDK_PATH}" ] ; then
   DEPS="$DEPS -DAAX_SDK_PATH=${AAX_SDK_PATH}"
@@ -16,7 +18,7 @@ if [ x"$APPLE_TEAMID" != x ] ; then
 fi
 
 # xcode
-cmake -GXcode ${DEPS} -B buildXcode ${TEAMOPT}
+cmake -GXcode ${DEPS} ${DEFS} -B buildXcode ${TEAMOPT}
 
 
 

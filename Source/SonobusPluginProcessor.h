@@ -7,14 +7,13 @@
 
 #include "JuceHeader.h"
 
-#include "aoo/aoo.h"
-#include "aoo/aoo_client.hpp"
-#include "aoo/aoo_server.hpp"
-#include "aoo/aoo_sink.hpp"
-#include "aoo/aoo_source.hpp"
-#include "aoo/aoo_source.hpp"
-#include "common/udp_server.hpp"
-#include "common/tcp_server.hpp"
+#include "aoo.h"
+#include "aoo_client.hpp"
+#include "aoo_server.hpp"
+#include "aoo_sink.hpp"
+#include "aoo_source.hpp"
+#include "udp_server.hpp"
+#include "tcp_server.hpp"
 
 #include "common/net_utils.hpp"
 
@@ -94,11 +93,6 @@ private:
 
     void handleEvent(const AooEvent *event, AooThreadLevel level);
 
-    AooId handleAccept(int e, const aoo::ip_address& addr);
-
-    void handleReceive(int e, AooId client, const aoo::ip_address& addr, const AooByte *data, AooSize size);
-    void handleUdpReceive(int e, const aoo::ip_address& addr,
-                          const AooByte *data, AooSize size);
 };
 
 
@@ -1156,7 +1150,7 @@ private:
     
     
     //std::unique_ptr<DatagramSocket> mUdpSocket;
-    int mUdpSocketHandle = -1;
+    aoo::udp_socket mUdpSocketHandle;
     int mUdpLocalPort;
     IPAddress mLocalIPAddress;
     aoo::ip_address mLocalClientAddress;
