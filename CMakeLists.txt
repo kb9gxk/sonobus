@@ -93,6 +93,11 @@ get_directory_property(AOODIR_COMPILE_DEFS DIRECTORY subdeps/aoo COMPILE_DEFINIT
 #message(STATUS "AOODIR_DEFS: ${AOODIR_COMPILE_DEFS}")
 
 
+# nlohmann JSON
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+set(JSON_Install OFF CACHE INTERNAL "")
+add_subdirectory(subdeps/nlohmann_json)
+
 
 # include JUCE
 # Create a /Modules directory in the IDE with the JUCE Module code
@@ -214,6 +219,7 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
         subdeps/aoo
         subdeps/aoo/include
         subdeps/aoo/deps
+        server
     )
 
     set (LIB_PATHS  "")
@@ -363,59 +369,15 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
         Source/mtdm.h
         Source/zitaRev.h
     )
-    
-#[[
-    set(AOOSourceFiles        
-        subdeps/aoo/lib/src/SLIP.hpp
-        subdeps/aoo/lib/src/client.cpp
-        subdeps/aoo/lib/src/client.hpp
-        subdeps/aoo/lib/src/codec_opus.cpp
-        subdeps/aoo/lib/src/codec_pcm.cpp
-        subdeps/aoo/lib/src/common.cpp
-        subdeps/aoo/lib/src/common.hpp
-        subdeps/aoo/lib/src/lockfree.hpp
-        subdeps/aoo/lib/src/net_utils.cpp
-        subdeps/aoo/lib/src/net_utils.hpp
-        subdeps/aoo/lib/src/server.cpp
-        subdeps/aoo/lib/src/server.hpp
-        subdeps/aoo/lib/src/sink.cpp
-        subdeps/aoo/lib/src/sink.hpp
-        subdeps/aoo/lib/src/source.cpp
-        subdeps/aoo/lib/src/source.hpp
-        subdeps/aoo/lib/src/sync.cpp
-        subdeps/aoo/lib/src/sync.hpp
-        subdeps/aoo/lib/src/time.cpp
-        subdeps/aoo/lib/src/time.hpp
-        subdeps/aoo/lib/src/time_dll.hpp
-        subdeps/aoo/lib/aoo/aoo.h
-        subdeps/aoo/lib/aoo/aoo.hpp
-        subdeps/aoo/lib/aoo/aoo_net.h
-        subdeps/aoo/lib/aoo/aoo_net.hpp
-        subdeps/aoo/lib/aoo/aoo_opus.h
-        subdeps/aoo/lib/aoo/aoo_pcm.h
-        subdeps/aoo/lib/aoo/aoo_types.h
-        subdeps/aoo/lib/aoo/aoo_utils.hpp
-        
-        subdeps/aoo/deps/md5/md5.c
-        subdeps/aoo/deps/md5/md5.h
-        subdeps/aoo/deps/oscpack/osc/OscOutboundPacketStream.cpp
-        subdeps/aoo/deps/oscpack/osc/OscPrintReceivedElements.cpp
-        subdeps/aoo/deps/oscpack/osc/OscReceivedElements.cpp
-        subdeps/aoo/deps/oscpack/osc/OscTypes.cpp
-        subdeps/aoo/deps/oscpack/osc/MessageMappingOscPacketListener.h
-        subdeps/aoo/deps/oscpack/osc/OscException.h
-        subdeps/aoo/deps/oscpack/osc/OscHostEndianness.h
-        subdeps/aoo/deps/oscpack/osc/OscOutboundPacketStream.h
-        subdeps/aoo/deps/oscpack/osc/OscPacketListener.h
-        subdeps/aoo/deps/oscpack/osc/OscPrintReceivedElements.h
-        subdeps/aoo/deps/oscpack/osc/OscReceivedElements.h
-        subdeps/aoo/deps/oscpack/osc/OscTypes.h
-    )
-]]
-    
+
+    set(ServerSourceFiles
+        server/SonoBusAooMetadata.h
+        server/SonoBusAooMetadata.cpp
+        )
+
     target_sources("${target_name}" PRIVATE 
-           ${SourceFiles} 
-          # ${AOOSourceFiles}
+           ${SourceFiles}
+           ${ServerSourceFiles}
        )
 
     # No, we don't want our source buried in extra nested folders
@@ -423,8 +385,6 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
 
     # The source tree should uhhh, still look like the source tree, yo
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/Source PREFIX "" FILES ${SourceFiles})
-    
-    #source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/subdeps/aoo PREFIX "aoo" FILES ${AOOSourceFiles})
 
     # Move the INTERFACE auto-created JUCE library stuff into its own folder
     source_group("JUCE Library Code" REGULAR_EXPRESSION "juce_")
@@ -643,6 +603,7 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
             
             ${target_name}_SBData
             aoo aoo_common
+            nlohmann_json::nlohmann_json
             # opus
         PUBLIC
             juce::juce_recommended_config_flags

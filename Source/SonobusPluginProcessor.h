@@ -28,6 +28,7 @@
 #include "zitaRev.h"
 
 #include "SoundboardChannelProcessor.h"
+#include "SonoBusAooMetadata.h"
 
 typedef MVerb<float> MVerbFloat;
 
@@ -38,7 +39,7 @@ class Metronome;
 
 #define MAX_PEERS 32
 #define MAX_CHANGROUPS 64
-#define DEFAULT_SERVER_PORT 10998
+#define DEFAULT_SERVER_PORT 10996
 #define DEFAULT_SERVER_HOST "aoo.sonobus.net"
 
 
@@ -69,6 +70,7 @@ struct AooPublicGroupInfo
 
     String groupName;
     int    activeCount = 0;
+    std::vector<std::string> users;
 
     int64 timestamp = 0; // milliseconds since 1970
 };
@@ -920,10 +922,10 @@ private:
 
     void updateSafetyMuting(RemotePeer * peer);
 
-    void setupSourceFormat(RemotePeer * peer, AooSource * source, bool latencymode=false);
+    void setupSourceFormat(RemotePeer * peer, AooSource * source);
     bool formatInfoToAooFormat(const AudioCodecFormatInfo & info, int channels, AooFormatStorage & retformat);
 
-    void setupSourceUserFormat(RemotePeer * peer, AooSource * source);
+    void setupSourceUserFormat(sonobus::SourceMetadata & metadata);
 
     
     RemotePeer *  findRemotePeer(EndpointState * endpoint, int32_t ourId);
@@ -1193,7 +1195,7 @@ private:
     
     CriticalSection  mRemotesLock;
 
-    std::map<String,AooPublicGroupInfo> mPublicGroupInfos;
+    std::map<AooId,AooPublicGroupInfo> mPublicGroupInfos;
     CriticalSection  mPublicGroupsLock;
 
     

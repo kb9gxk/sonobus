@@ -9,3 +9,6 @@
 [submodule "subdeps/ff_meters"]
 	path = subdeps/ff_meters
 	url = https://github.com/ffAudio/ff_meters.git
+[submodule "subdeps/nlohmann_json"]
+	path = subdeps/nlohmann_json
+	url = https://github.com/nlohmann/json.git

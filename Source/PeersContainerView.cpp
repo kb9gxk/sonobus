@@ -545,7 +545,16 @@ PeerViewInfo * PeersContainerView::createPeerViewInfo()
     pvf->formatChoiceButton = std::make_unique<SonoChoiceButton>();
     pvf->formatChoiceButton->setTitle(TRANS("Send Quality"));
     pvf->formatChoiceButton->addChoiceListener(this);
+
+    pvf->remoteSendFormatChoiceButton = std::make_unique<SonoChoiceButton>();
+    pvf->remoteSendFormatChoiceButton->setTitle(TRANS("Preferred Receive Quality"));
+    pvf->remoteSendFormatChoiceButton->addChoiceListener(this);
+
     int numformats = processor.getNumberAudioCodecFormats();
+
+    pvf->formatChoiceButton->addItem(TRANS("Use Default"), -1);
+    pvf->remoteSendFormatChoiceButton->addItem(TRANS("No Preference"), -1);
+
     for (int i=0; i < numformats; ++i) {
         SonobusAudioProcessor::AudioCodecFormatInfo finfo;
         processor.getAudioCodeFormatInfo(i, finfo);
@@ -553,22 +562,16 @@ PeerViewInfo * PeersContainerView::createPeerViewInfo()
         if (finfo.codec == SonobusAudioProcessor::AudioCodecFormatCodec::CodecOpus && finfo.bitrate < 96000) {
             name += String(" (*)");
         }
-        pvf->formatChoiceButton->addItem(name, i);
+        pvf->formatChoiceButton->addItem(name, i, i==0);
+        pvf->remoteSendFormatChoiceButton->addItem(processor.getAudioCodeFormatName(i), i, i==0);
     }
     pvf->formatChoiceButton->addItem("(*) " + TRANS("not recommended"), -2, true, true);
+    pvf->remoteSendFormatChoiceButton->addItem("(*) " + TRANS("not recommended"), -2, true, true);
+
 
     pvf->staticFormatChoiceLabel = std::make_unique<Label>("sendfmtst", TRANS("Send Quality"));
     pvf->staticFormatChoiceLabel->setAccessible(false);
     configLabel(pvf->staticFormatChoiceLabel.get(), LabelTypeRegular);
-
-
-    pvf->remoteSendFormatChoiceButton = std::make_unique<SonoChoiceButton>();
-    pvf->remoteSendFormatChoiceButton->addChoiceListener(this);
-    pvf->remoteSendFormatChoiceButton->setTitle(TRANS("Preferred Receive Quality"));
-    pvf->remoteSendFormatChoiceButton->addItem(TRANS("No Preference"), -1);
-    for (int i=0; i < numformats; ++i) {
-        pvf->remoteSendFormatChoiceButton->addItem(processor.getAudioCodeFormatName(i), i);
-    }
 
     pvf->staticRemoteSendFormatChoiceLabel = std::make_unique<Label>("recvfmtst", TRANS("Preferred Recv Quality"));
     configLabel(pvf->staticRemoteSendFormatChoiceLabel.get(), LabelTypeRegular);
@@ -1811,7 +1814,8 @@ void PeersContainerView::updatePeerViews(int specific)
         
         
         int formatindex = processor.getRemotePeerAudioCodecFormat(i);
-        pvf->formatChoiceButton->setSelectedItemIndex(formatindex >= 0 ? formatindex : processor.getDefaultAudioCodecFormat(), dontSendNotification);
+        pvf->formatChoiceButton->setSelectedId(formatindex, dontSendNotification);
+        //pvf->formatChoiceButton->setSelectedItemIndex(formatindex >= 0 ? formatindex : processor.getDefaultAudioCodecFormat(), dontSendNotification);
         String sendqual;
         sendqual << processor.getRemotePeerActualSendChannelCount(i) << "ch " << processor.getAudioCodeFormatName(formatindex);
         pvf->sendQualityLabel->setText(sendqual, dontSendNotification);
