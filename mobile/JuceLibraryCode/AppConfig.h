@@ -22,7 +22,7 @@
 
 #include "JucePluginDefines.h"
 
-#define JUCE_PROJUCER_VERSION 0x8000c
+#define JUCE_PROJUCER_VERSION 0x8000e
 
 //==============================================================================
 #define JUCE_MODULE_AVAILABLE_ff_meters                           1

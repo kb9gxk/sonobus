@@ -77,19 +77,22 @@
  #define JucePlugin_EditorRequiresKeyboardFocus  0
 #endif
 #ifndef  JucePlugin_Version
- #define JucePlugin_Version                1.7.3
+ #define JucePlugin_Version                1.7.4
 #endif
 #ifndef  JucePlugin_VersionCode
- #define JucePlugin_VersionCode            0x10703
+ #define JucePlugin_VersionCode            0x10704
 #endif
 #ifndef  JucePlugin_VersionString
- #define JucePlugin_VersionString          "1.7.3"
+ #define JucePlugin_VersionString          "1.7.4"
 #endif
 #ifndef  JucePlugin_VSTUniqueID
  #define JucePlugin_VSTUniqueID            JucePlugin_PluginCode
 #endif
 #ifndef  JucePlugin_VSTCategory
  #define JucePlugin_VSTCategory            kPlugCategEffect
+#endif
+#ifndef  JucePlugin_LV2PluginClass
+ #define JucePlugin_LV2PluginClass         Plugin
 #endif
 #ifndef  JucePlugin_Vst3Category
  #define JucePlugin_Vst3Category           "Fx"

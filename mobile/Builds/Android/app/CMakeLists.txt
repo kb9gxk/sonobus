@@ -14,7 +14,7 @@ add_subdirectory (${OBOE_DIR} ./oboe)
 add_library("cpufeatures" STATIC "${ANDROID_NDK}/sources/android/cpufeatures/cpu-features.c")
 set_source_files_properties("${ANDROID_NDK}/sources/android/cpufeatures/cpu-features.c" PROPERTIES COMPILE_FLAGS "-Wno-sign-conversion -Wno-gnu-statement-expression")
 
-add_definitions([[-DJUCE_ANDROID=1]] [[-DJUCE_ANDROID_API_VERSION=24]] [[-DJUCE_PUSH_NOTIFICATIONS=1]] [[-DJUCE_PUSH_NOTIFICATIONS_ACTIVITY="com/sonosaurus/sonobus/SonoBusActivity"]] [[-DJUCE_CONTENT_SHARING=1]] [[-DJUCE_ANDROID_GL_ES_VERSION_3_0=1]] [[-DJUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1]] [[-DUSE_CODEC_OPUS=1]] [[-DAOO_TIMEFILTER_CHECK=0]] [[-DAOO_STATIC]] [[-DJUCE_STANDALONE_FILTER_WINDOW_USE_KIOSK_MODE=0]] [[-DJUCE_ANDROID_ACTIVITY_OVERRIDE_CLASSNAME="com_sonosaurus_sonobus_SonoBusActivity"]] [[-DJUCE_ANDROID_ACTIVITY_OVERRIDE_CLASSPATH="com/sonosaurus/sonobus/SonoBusActivity"]] [[-DJUCER_ANDROIDSTUDIO_7F0E4A25=1]] [[-DJUCE_APP_VERSION=1.7.3]] [[-DJUCE_APP_VERSION_HEX=0x10703]])
+add_definitions([[-DJUCE_ANDROID=1]] [[-DJUCE_ANDROID_API_VERSION=24]] [[-DJUCE_PUSH_NOTIFICATIONS=1]] [[-DJUCE_PUSH_NOTIFICATIONS_ACTIVITY="com/sonosaurus/sonobus/SonoBusActivity"]] [[-DJUCE_CONTENT_SHARING=1]] [[-DJUCE_ANDROID_GL_ES_VERSION_3_0=1]] [[-DJUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1]] [[-DUSE_CODEC_OPUS=1]] [[-DAOO_TIMEFILTER_CHECK=0]] [[-DAOO_STATIC]] [[-DJUCE_STANDALONE_FILTER_WINDOW_USE_KIOSK_MODE=0]] [[-DJUCE_ANDROID_ACTIVITY_OVERRIDE_CLASSNAME="com_sonosaurus_sonobus_SonoBusActivity"]] [[-DJUCE_ANDROID_ACTIVITY_OVERRIDE_CLASSPATH="com/sonosaurus/sonobus/SonoBusActivity"]] [[-DJUCER_ANDROIDSTUDIO_7F0E4A25=1]] [[-DJUCE_APP_VERSION=1.7.4]] [[-DJUCE_APP_VERSION_HEX=0x10704]])
 
 include_directories( AFTER
     "../../../JuceLibraryCode"
@@ -30,7 +30,7 @@ if(JUCE_BUILD_CONFIGURATION MATCHES "DEBUG")
         "../../../../deps/android/${ANDROID_ABI}"
     )
 
-    add_definitions([[-DJUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1]] [[-DLOGLEVEL=2]] [[-DUSE_CODEC_OPUS=1]] [[-DAOO_TIMEFILTER_CHECK=0]] [[-DAOO_STATIC]] [[-DJUCE_STANDALONE_FILTER_WINDOW_USE_KIOSK_MODE=0]] [[-DJUCE_ANDROID_ACTIVITY_OVERRIDE_CLASSNAME="com_sonosaurus_sonobus_SonoBusActivity"]] [[-DJUCE_ANDROID_ACTIVITY_OVERRIDE_CLASSPATH="com/sonosaurus/sonobus/SonoBusActivity"]] [[-DJUCER_ANDROIDSTUDIO_7F0E4A25=1]] [[-DJUCE_APP_VERSION=1.7.3]] [[-DJUCE_APP_VERSION_HEX=0x10703]] [[-DDEBUG=1]] [[-D_DEBUG=1]])
+    add_definitions([[-DJUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1]] [[-DLOGLEVEL=2]] [[-DUSE_CODEC_OPUS=1]] [[-DAOO_TIMEFILTER_CHECK=0]] [[-DAOO_STATIC]] [[-DJUCE_STANDALONE_FILTER_WINDOW_USE_KIOSK_MODE=0]] [[-DJUCE_ANDROID_ACTIVITY_OVERRIDE_CLASSNAME="com_sonosaurus_sonobus_SonoBusActivity"]] [[-DJUCE_ANDROID_ACTIVITY_OVERRIDE_CLASSPATH="com/sonosaurus/sonobus/SonoBusActivity"]] [[-DJUCER_ANDROIDSTUDIO_7F0E4A25=1]] [[-DJUCE_APP_VERSION=1.7.4]] [[-DJUCE_APP_VERSION_HEX=0x10704]] [[-DDEBUG=1]] [[-D_DEBUG=1]])
     include_directories( AFTER
         "../../../../deps/aoo/lib"
         "../../../../deps/aoo/deps"
@@ -47,7 +47,7 @@ elseif(JUCE_BUILD_CONFIGURATION MATCHES "RELEASE")
         "../../../../deps/android/${ANDROID_ABI}"
     )
 
-    add_definitions([[-DJUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1]] [[-DUSE_CODEC_OPUS=1]] [[-DAOO_TIMEFILTER_CHECK=0]] [[-DAOO_STATIC]] [[-DJUCE_STANDALONE_FILTER_WINDOW_USE_KIOSK_MODE=0]] [[-DJUCE_ANDROID_ACTIVITY_OVERRIDE_CLASSNAME="com_sonosaurus_sonobus_SonoBusActivity"]] [[-DJUCE_ANDROID_ACTIVITY_OVERRIDE_CLASSPATH="com/sonosaurus/sonobus/SonoBusActivity"]] [[-DJUCER_ANDROIDSTUDIO_7F0E4A25=1]] [[-DJUCE_APP_VERSION=1.7.3]] [[-DJUCE_APP_VERSION_HEX=0x10703]] [[-DNDEBUG=1]])
+    add_definitions([[-DJUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1]] [[-DUSE_CODEC_OPUS=1]] [[-DAOO_TIMEFILTER_CHECK=0]] [[-DAOO_STATIC]] [[-DJUCE_STANDALONE_FILTER_WINDOW_USE_KIOSK_MODE=0]] [[-DJUCE_ANDROID_ACTIVITY_OVERRIDE_CLASSNAME="com_sonosaurus_sonobus_SonoBusActivity"]] [[-DJUCE_ANDROID_ACTIVITY_OVERRIDE_CLASSPATH="com/sonosaurus/sonobus/SonoBusActivity"]] [[-DJUCER_ANDROIDSTUDIO_7F0E4A25=1]] [[-DJUCE_APP_VERSION=1.7.4]] [[-DJUCE_APP_VERSION_HEX=0x10704]] [[-DNDEBUG=1]])
     include_directories( AFTER
         "../../../../deps/aoo/lib"
         "../../../../deps/aoo/deps"
@@ -477,6 +477,7 @@ add_library( ${BINARY_NAME}
     "../../../../deps/juce/modules/juce_audio_devices/native/asio/asiosys.h"
     "../../../../deps/juce/modules/juce_audio_devices/native/asio/iasiodrv.h"
     "../../../../deps/juce/modules/juce_audio_devices/native/asio/LICENSE.txt"
+    "../../../../deps/juce/modules/juce_audio_devices/native/oboe/include/oboe/AudioClock.h"
     "../../../../deps/juce/modules/juce_audio_devices/native/oboe/include/oboe/AudioStream.h"
     "../../../../deps/juce/modules/juce_audio_devices/native/oboe/include/oboe/AudioStreamBase.h"
     "../../../../deps/juce/modules/juce_audio_devices/native/oboe/include/oboe/AudioStreamBuilder.h"
@@ -499,7 +500,6 @@ add_library( ${BINARY_NAME}
     "../../../../deps/juce/modules/juce_audio_devices/native/oboe/src/aaudio/AudioStreamAAudio.h"
     "../../../../deps/juce/modules/juce_audio_devices/native/oboe/src/common/AdpfWrapper.cpp"
     "../../../../deps/juce/modules/juce_audio_devices/native/oboe/src/common/AdpfWrapper.h"
-    "../../../../deps/juce/modules/juce_audio_devices/native/oboe/src/common/AudioClock.h"
     "../../../../deps/juce/modules/juce_audio_devices/native/oboe/src/common/AudioSourceCaller.cpp"
     "../../../../deps/juce/modules/juce_audio_devices/native/oboe/src/common/AudioSourceCaller.h"
     "../../../../deps/juce/modules/juce_audio_devices/native/oboe/src/common/AudioStream.cpp"
@@ -1039,7 +1039,6 @@ add_library( ${BINARY_NAME}
     "../../../../deps/juce/modules/juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h"
     "../../../../deps/juce/modules/juce_audio_plugin_client/Unity/juce_UnityPluginInterface.h"
     "../../../../deps/juce/modules/juce_audio_plugin_client/VST3/juce_VST3ManifestHelper.cpp"
-    "../../../../deps/juce/modules/juce_audio_plugin_client/VST3/juce_VST3ManifestHelper.mm"
     "../../../../deps/juce/modules/juce_audio_plugin_client/VST3/juce_VST3ModuleInfo.h"
     "../../../../deps/juce/modules/juce_audio_plugin_client/juce_audio_plugin_client_AAX.cpp"
     "../../../../deps/juce/modules/juce_audio_plugin_client/juce_audio_plugin_client_AAX.mm"
@@ -1330,6 +1329,7 @@ add_library( ${BINARY_NAME}
     "../../../../deps/juce/modules/juce_audio_processors_headless/format_types/VST3_SDK/public.sdk/source/vst/vstpresetfile.h"
     "../../../../deps/juce/modules/juce_audio_processors_headless/format_types/VST3_SDK/public.sdk/LICENSE.txt"
     "../../../../deps/juce/modules/juce_audio_processors_headless/format_types/VST3_SDK/public.sdk/README.md"
+    "../../../../deps/juce/modules/juce_audio_processors_headless/format_types/VST3_SDK/JUCE_README.md"
     "../../../../deps/juce/modules/juce_audio_processors_headless/format_types/VST3_SDK/LICENSE.txt"
     "../../../../deps/juce/modules/juce_audio_processors_headless/format_types/VST3_SDK/README.md"
     "../../../../deps/juce/modules/juce_audio_processors_headless/format_types/juce_ARACommon.h"
@@ -1397,10 +1397,10 @@ add_library( ${BINARY_NAME}
     "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_AudioParameterFloat.h"
     "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_AudioParameterInt.cpp"
     "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_AudioParameterInt.h"
+    "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_AudioPluginExtensions.h"
     "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_AudioProcessorParameterWithID.cpp"
     "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_AudioProcessorParameterWithID.h"
     "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_CommonProcessorUtilities.h"
-    "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_ExtensionsVisitor.h"
     "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_FlagCache.h"
     "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_RangedAudioParameter.cpp"
     "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_RangedAudioParameter.h"
@@ -1706,6 +1706,8 @@ add_library( ${BINARY_NAME}
     "../../../../deps/juce/modules/juce_core/time/juce_RelativeTime.h"
     "../../../../deps/juce/modules/juce_core/time/juce_Time.cpp"
     "../../../../deps/juce/modules/juce_core/time/juce_Time.h"
+    "../../../../deps/juce/modules/juce_core/time/juce_TimedDiagnostic.h"
+    "../../../../deps/juce/modules/juce_core/time/juce_TimeUnits.h"
     "../../../../deps/juce/modules/juce_core/unit_tests/juce_UnitTest.cpp"
     "../../../../deps/juce/modules/juce_core/unit_tests/juce_UnitTest.h"
     "../../../../deps/juce/modules/juce_core/unit_tests/juce_UnitTestCategories.h"
@@ -1900,6 +1902,7 @@ add_library( ${BINARY_NAME}
     "../../../../deps/juce/modules/juce_events/messages/juce_NotificationType.h"
     "../../../../deps/juce/modules/juce_events/native/juce_EventLoop_linux.h"
     "../../../../deps/juce/modules/juce_events/native/juce_EventLoopInternal_linux.h"
+    "../../../../deps/juce/modules/juce_events/native/juce_HiddenMessageWindow_windows.cpp"
     "../../../../deps/juce/modules/juce_events/native/juce_HiddenMessageWindow_windows.h"
     "../../../../deps/juce/modules/juce_events/native/juce_MessageManager_ios.mm"
     "../../../../deps/juce/modules/juce_events/native/juce_MessageManager_mac.mm"
@@ -1934,7 +1937,6 @@ add_library( ${BINARY_NAME}
     "../../../../deps/juce/modules/juce_graphics/contexts/juce_LowLevelGraphicsContext.h"
     "../../../../deps/juce/modules/juce_graphics/contexts/juce_LowLevelGraphicsSoftwareRenderer.cpp"
     "../../../../deps/juce/modules/juce_graphics/contexts/juce_LowLevelGraphicsSoftwareRenderer.h"
-    "../../../../deps/juce/modules/juce_graphics/detail/juce_FontRendering.h"
     "../../../../deps/juce/modules/juce_graphics/detail/juce_JustifiedText.cpp"
     "../../../../deps/juce/modules/juce_graphics/detail/juce_JustifiedText.h"
     "../../../../deps/juce/modules/juce_graphics/detail/juce_Ranges.cpp"
@@ -3421,6 +3423,7 @@ set_source_files_properties(
     "../../../../deps/juce/modules/juce_audio_devices/native/asio/asiosys.h"
     "../../../../deps/juce/modules/juce_audio_devices/native/asio/iasiodrv.h"
     "../../../../deps/juce/modules/juce_audio_devices/native/asio/LICENSE.txt"
+    "../../../../deps/juce/modules/juce_audio_devices/native/oboe/include/oboe/AudioClock.h"
     "../../../../deps/juce/modules/juce_audio_devices/native/oboe/include/oboe/AudioStream.h"
     "../../../../deps/juce/modules/juce_audio_devices/native/oboe/include/oboe/AudioStreamBase.h"
     "../../../../deps/juce/modules/juce_audio_devices/native/oboe/include/oboe/AudioStreamBuilder.h"
@@ -3443,7 +3446,6 @@ set_source_files_properties(
     "../../../../deps/juce/modules/juce_audio_devices/native/oboe/src/aaudio/AudioStreamAAudio.h"
     "../../../../deps/juce/modules/juce_audio_devices/native/oboe/src/common/AdpfWrapper.cpp"
     "../../../../deps/juce/modules/juce_audio_devices/native/oboe/src/common/AdpfWrapper.h"
-    "../../../../deps/juce/modules/juce_audio_devices/native/oboe/src/common/AudioClock.h"
     "../../../../deps/juce/modules/juce_audio_devices/native/oboe/src/common/AudioSourceCaller.cpp"
     "../../../../deps/juce/modules/juce_audio_devices/native/oboe/src/common/AudioSourceCaller.h"
     "../../../../deps/juce/modules/juce_audio_devices/native/oboe/src/common/AudioStream.cpp"
@@ -3983,7 +3985,6 @@ set_source_files_properties(
     "../../../../deps/juce/modules/juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h"
     "../../../../deps/juce/modules/juce_audio_plugin_client/Unity/juce_UnityPluginInterface.h"
     "../../../../deps/juce/modules/juce_audio_plugin_client/VST3/juce_VST3ManifestHelper.cpp"
-    "../../../../deps/juce/modules/juce_audio_plugin_client/VST3/juce_VST3ManifestHelper.mm"
     "../../../../deps/juce/modules/juce_audio_plugin_client/VST3/juce_VST3ModuleInfo.h"
     "../../../../deps/juce/modules/juce_audio_plugin_client/juce_audio_plugin_client_AAX.cpp"
     "../../../../deps/juce/modules/juce_audio_plugin_client/juce_audio_plugin_client_AAX.mm"
@@ -4274,6 +4275,7 @@ set_source_files_properties(
     "../../../../deps/juce/modules/juce_audio_processors_headless/format_types/VST3_SDK/public.sdk/source/vst/vstpresetfile.h"
     "../../../../deps/juce/modules/juce_audio_processors_headless/format_types/VST3_SDK/public.sdk/LICENSE.txt"
     "../../../../deps/juce/modules/juce_audio_processors_headless/format_types/VST3_SDK/public.sdk/README.md"
+    "../../../../deps/juce/modules/juce_audio_processors_headless/format_types/VST3_SDK/JUCE_README.md"
     "../../../../deps/juce/modules/juce_audio_processors_headless/format_types/VST3_SDK/LICENSE.txt"
     "../../../../deps/juce/modules/juce_audio_processors_headless/format_types/VST3_SDK/README.md"
     "../../../../deps/juce/modules/juce_audio_processors_headless/format_types/juce_ARACommon.h"
@@ -4341,10 +4343,10 @@ set_source_files_properties(
     "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_AudioParameterFloat.h"
     "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_AudioParameterInt.cpp"
     "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_AudioParameterInt.h"
+    "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_AudioPluginExtensions.h"
     "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_AudioProcessorParameterWithID.cpp"
     "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_AudioProcessorParameterWithID.h"
     "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_CommonProcessorUtilities.h"
-    "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_ExtensionsVisitor.h"
     "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_FlagCache.h"
     "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_RangedAudioParameter.cpp"
     "../../../../deps/juce/modules/juce_audio_processors_headless/utilities/juce_RangedAudioParameter.h"
@@ -4650,6 +4652,8 @@ set_source_files_properties(
     "../../../../deps/juce/modules/juce_core/time/juce_RelativeTime.h"
     "../../../../deps/juce/modules/juce_core/time/juce_Time.cpp"
     "../../../../deps/juce/modules/juce_core/time/juce_Time.h"
+    "../../../../deps/juce/modules/juce_core/time/juce_TimedDiagnostic.h"
+    "../../../../deps/juce/modules/juce_core/time/juce_TimeUnits.h"
     "../../../../deps/juce/modules/juce_core/unit_tests/juce_UnitTest.cpp"
     "../../../../deps/juce/modules/juce_core/unit_tests/juce_UnitTest.h"
     "../../../../deps/juce/modules/juce_core/unit_tests/juce_UnitTestCategories.h"
@@ -4844,6 +4848,7 @@ set_source_files_properties(
     "../../../../deps/juce/modules/juce_events/messages/juce_NotificationType.h"
     "../../../../deps/juce/modules/juce_events/native/juce_EventLoop_linux.h"
     "../../../../deps/juce/modules/juce_events/native/juce_EventLoopInternal_linux.h"
+    "../../../../deps/juce/modules/juce_events/native/juce_HiddenMessageWindow_windows.cpp"
     "../../../../deps/juce/modules/juce_events/native/juce_HiddenMessageWindow_windows.h"
     "../../../../deps/juce/modules/juce_events/native/juce_MessageManager_ios.mm"
     "../../../../deps/juce/modules/juce_events/native/juce_MessageManager_mac.mm"
@@ -4878,7 +4883,6 @@ set_source_files_properties(
     "../../../../deps/juce/modules/juce_graphics/contexts/juce_LowLevelGraphicsContext.h"
     "../../../../deps/juce/modules/juce_graphics/contexts/juce_LowLevelGraphicsSoftwareRenderer.cpp"
     "../../../../deps/juce/modules/juce_graphics/contexts/juce_LowLevelGraphicsSoftwareRenderer.h"
-    "../../../../deps/juce/modules/juce_graphics/detail/juce_FontRendering.h"
     "../../../../deps/juce/modules/juce_graphics/detail/juce_JustifiedText.cpp"
     "../../../../deps/juce/modules/juce_graphics/detail/juce_JustifiedText.h"
     "../../../../deps/juce/modules/juce_graphics/detail/juce_Ranges.cpp"
