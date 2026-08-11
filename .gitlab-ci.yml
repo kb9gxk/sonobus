@@ -100,7 +100,15 @@ build:windows:
       # querying the Installer for that instance entirely. Version
       # pinned to vswhere's own installationVersion for this exact VS
       # Build Tools 2022 install (17.14.37502.11).
-      cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_GENERATOR_INSTANCE="C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools,version=17.14.37502.11"
+      # SONOBUS_ENABLE_ASIO=OFF: ASIO driver support needs the
+      # Steinberg ASIO SDK (a separately licensed download, not
+      # vendored in this repo) at ../asiosdk/common -- unavailable on
+      # this runner. WASAPI (JUCE_WASAPI=1, already on) still provides
+      # working Windows audio; this only means the CI-built .exe lacks
+      # ASIO driver support specifically. Not applied to local/official
+      # release builds (see CMakeLists.txt's SONOBUS_ENABLE_ASIO option,
+      # default ON).
+      cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_GENERATOR_INSTANCE="C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools,version=17.14.37502.11" -DSONOBUS_ENABLE_ASIO=OFF
       if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
       cmake --build build --config Release --parallel
       if ($LASTEXITCODE -ne 0) { throw "cmake build failed" }
