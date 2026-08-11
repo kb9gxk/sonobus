@@ -84,7 +84,15 @@ build:windows:
   script:
     - |
       $ErrorActionPreference = "Stop"
-      cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+      # CMAKE_GENERATOR_INSTANCE: cmake's normal VS auto-detection (via
+      # the VS Setup COM API) fails with "could not find any instance
+      # of Visual Studio" when the calling process is the gitlab-runner
+      # Windows service running as LocalSystem, confirmed directly on
+      # this runner -- vswhere.exe run interactively finds both
+      # installed VS Build Tools instances fine, but the CI job (same
+      # machine, same VS install) can't. Pointing cmake at the instance
+      # path explicitly sidesteps that detection path entirely.
+      cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_GENERATOR_INSTANCE="C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools"
       if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
       cmake --build build --config Release --parallel
       if ($LASTEXITCODE -ne 0) { throw "cmake build failed" }
