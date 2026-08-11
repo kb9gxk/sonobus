@@ -48,6 +48,14 @@
 #     hostnames, ruling out the separate Cloudflare-tunnel large-upload
 #     issue documented elsewhere. Decoded back to a .pfx file at the
 #     start of each signing step and deleted immediately after use.
+#     GitLab exposes a file-type variable's *value* to the job by
+#     writing it to a temp file and pointing the env var at that file's
+#     path -- not the value itself. $env:WIN_CODESIGN_PFX_B64 is
+#     therefore a path; each signing step reads that file's content
+#     (Get-Content -Raw, .Trim() for any trailing newline) before
+#     base64-decoding it. Confirmed the hard way: decoding
+#     $env:WIN_CODESIGN_PFX_B64 directly threw "input is not a valid
+#     Base-64 string" because it was decoding a Windows path string.
 #
 # release/wininstaller-ci.iss is a trimmed-down copy of
 # release/wininstaller.iss (the upstream project's real installer
@@ -114,7 +122,7 @@ build:windows:
       if ($LASTEXITCODE -ne 0) { throw "cmake build failed" }
     - |
       $ErrorActionPreference = "Stop"
-      [IO.File]::WriteAllBytes("$PWD\sonobus-codesign.pfx", [Convert]::FromBase64String($env:WIN_CODESIGN_PFX_B64))
+      [IO.File]::WriteAllBytes("$PWD\sonobus-codesign.pfx", [Convert]::FromBase64String((Get-Content -Raw $env:WIN_CODESIGN_PFX_B64).Trim()))
       $signtool = (Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe -ErrorAction Stop | Where-Object { $_.FullName -like "*\x64\*" } | Select-Object -First 1).FullName
       & $signtool sign /f "$PWD\sonobus-codesign.pfx" /p "$env:WIN_CODESIGN_PASSWORD" /fd SHA256 /t http://timestamp.digicert.com "build\SonoBus_artefacts\Release\Standalone\SonoBus.exe"
       if ($LASTEXITCODE -ne 0) { throw "signtool failed on Standalone exe" }
@@ -150,7 +158,7 @@ package:windows-installer:
   script:
     - |
       $ErrorActionPreference = "Stop"
-      [IO.File]::WriteAllBytes("$PWD\sonobus-codesign.pfx", [Convert]::FromBase64String($env:WIN_CODESIGN_PFX_B64))
+      [IO.File]::WriteAllBytes("$PWD\sonobus-codesign.pfx", [Convert]::FromBase64String((Get-Content -Raw $env:WIN_CODESIGN_PFX_B64).Trim()))
       $signtool = (Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe -ErrorAction Stop | Where-Object { $_.FullName -like "*\x64\*" } | Select-Object -First 1).FullName
       $version = $env:CI_COMMIT_TAG -replace '^v', ''
       Remove-Item -Force -ErrorAction SilentlyContinue "SonoBus-*-Installer.exe"
