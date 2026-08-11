@@ -8587,6 +8587,22 @@ void SonobusAudioProcessor::getStateInformationWithOptions(MemoryBlock& destData
     
     ValueTree peerCacheTree = tempstate.getOrCreateChildWithName(peerStateCacheMapKey, nullptr);
     if (includecache) {
+        // Peers still connected right now (e.g. the app is being quit
+        // without an explicit Disconnect first) have never had their
+        // live state -- soloed, gain, pan, etc. -- copied into
+        // mPeerStateCacheMap: that only happens in commitCacheForPeer,
+        // which up to now was only called from peer-removal code paths
+        // (removeAllRemotePeers, individual peer disconnect), never
+        // from here. Without this, anything changed on a still-
+        // connected peer since its last disconnect/reconnect is lost
+        // on quit, not just soloed state.
+        {
+            const ScopedReadLock sl (mCoreLock);
+            for (auto * peer : mRemotePeers) {
+                commitCacheForPeer(peer);
+            }
+        }
+
         // update state with our recents info
         peerCacheTree.removeAllChildren(nullptr);
         for (auto & info : mPeerStateCacheMap) {
