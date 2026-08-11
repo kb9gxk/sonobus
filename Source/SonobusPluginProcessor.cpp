@@ -86,6 +86,8 @@ static String recentsItemKey("ServerConnectionInfo");
 static String extraStateCollectionKey("ExtraState");
 static String useSpecificUdpPortKey("UseUdpPort");
 static String changeQualForAllKey("ChangeQualForAll");
+static String rememberLocalTrackSoloKey("RememberLocalTrackSolo");
+static String rememberPeerSoloKey("RememberPeerSolo");
 static String changeRecvQualForAllKey("ChangeRecvQualForAll");
 static String defRecordOptionsKey("DefaultRecordingOptions");
 static String defRecordFormatKey("DefaultRecordingFormat");
@@ -150,6 +152,7 @@ static String peerNetbufKey("netbuf");
 static String peerNetbufAutoKey("netbufauto");
 static String peerSendFormatKey("sendformat");
 static String peerOrderPriorityKey("orderpriority");
+static String peerSoloedKey("peerSoloed");
 
 
 #define METER_RMS_SEC 0.03
@@ -6152,6 +6155,7 @@ void SonobusAudioProcessor::commitCacheForPeer(RemotePeer * retpeer)
     newcache.numMultiChanGroups = retpeer->lastMultiNumChanGroups;
     newcache.modifiedChanGroups = retpeer->modifiedMultiChanGroups;
     newcache.orderPriority = retpeer->orderPriority;
+    newcache.soloed = retpeer->soloed;
 
     for (int i=0; i < retpeer->numChanGroups && i < MAX_CHANGROUPS; ++i) {
         newcache.channelGroupParams[i] = retpeer->chanGroups[i].params;
@@ -6211,6 +6215,7 @@ bool SonobusAudioProcessor::findAndLoadCacheForPeer(RemotePeer * retpeer)
         retpeer->lastMultiNumChanGroups = cache.numMultiChanGroups;
         retpeer->modifiedChanGroups = retpeer->modifiedMultiChanGroups = cache.modifiedChanGroups;
         retpeer->orderPriority  = cache.orderPriority;
+        retpeer->soloed = cache.soloed;
 
 
         for (int i=0; i < retpeer->numChanGroups  && i < MAX_CHANGROUPS; ++i) {
@@ -8513,6 +8518,8 @@ void SonobusAudioProcessor::getStateInformationWithOptions(MemoryBlock& destData
     extraTree.removeAllChildren(nullptr);
     extraTree.setProperty(useSpecificUdpPortKey, mUseSpecificUdpPort, nullptr);
     extraTree.setProperty(changeQualForAllKey, mChangingDefaultAudioCodecChangesAll, nullptr);
+    extraTree.setProperty(rememberLocalTrackSoloKey, mRememberLocalTrackSolo, nullptr);
+    extraTree.setProperty(rememberPeerSoloKey, mRememberPeerSolo, nullptr);
     extraTree.setProperty(changeRecvQualForAllKey, mChangingDefaultRecvAudioCodecChangesAll, nullptr);
     extraTree.setProperty(defRecordOptionsKey, var((int)mDefaultRecordingOptions), nullptr);
     extraTree.setProperty(defRecordFormatKey, var((int)mDefaultRecordingFormat), nullptr);
@@ -8645,6 +8652,9 @@ void SonobusAudioProcessor::setStateInformationWithOptions (const void* data, in
             bool chqual = extraTree.getProperty(changeQualForAllKey, mChangingDefaultAudioCodecChangesAll);
             setChangingDefaultAudioCodecSetsExisting(chqual);
 
+            mRememberLocalTrackSolo = extraTree.getProperty(rememberLocalTrackSoloKey, mRememberLocalTrackSolo);
+            mRememberPeerSolo = extraTree.getProperty(rememberPeerSoloKey, mRememberPeerSolo);
+
             bool chrqual = extraTree.getProperty(changeRecvQualForAllKey, mChangingDefaultRecvAudioCodecChangesAll);
             setChangingDefaultRecvAudioCodecSetsExisting(chrqual);
 
@@ -8737,6 +8747,11 @@ void SonobusAudioProcessor::setStateInformationWithOptions (const void* data, in
                     mInputChannelGroups[i].params.setFromValueTree(channelGroupTree);
                     
                     ++i;
+                }
+                if (!mRememberLocalTrackSolo) {
+                    for (auto ci = 0; ci < i; ++ci) {
+                        mInputChannelGroups[ci].params.soloed = false;
+                    }
                 }
                 
             }
@@ -8885,6 +8900,7 @@ ValueTree SonobusAudioProcessor::PeerStateCache::getValueTree() const
     item.setProperty(numChanGroupsKey, numChanGroups, nullptr);
     item.setProperty(peerLevelKey, mainGain, nullptr);
     item.setProperty(peerOrderPriorityKey, orderPriority, nullptr);
+    item.setProperty(peerSoloedKey, soloed, nullptr);
 
     ValueTree channelGroupsTree(channelGroupsStateKey);
 
@@ -8918,6 +8934,7 @@ void SonobusAudioProcessor::PeerStateCache::setFromValueTree(const ValueTree & i
 
     mainGain = item.getProperty(peerLevelKey, mainGain);
     orderPriority = item.getProperty(peerOrderPriorityKey, orderPriority);
+    soloed = item.getProperty(peerSoloedKey, soloed);
 
     // backwards compat
     channelGroupParams[0].pan[0] = item.getProperty(peerMonoPanKey, channelGroupParams[0].pan[0]);
@@ -8970,6 +8987,12 @@ void SonobusAudioProcessor::loadPeerCacheFromState()
         for (auto child : peerCacheMapTree) {
             PeerStateCache info;
             info.setFromValueTree(child);
+            if (!mRememberPeerSolo) {
+                info.soloed = false;
+                for (auto ci = 0; ci < info.numChanGroups && ci < MAX_CHANGROUPS; ++ci) {
+                    info.channelGroupParams[ci].soloed = false;
+                }
+            }
             mPeerStateCacheMap.insert(PeerStateCacheMap::value_type(info.name, info));
         }
     }
