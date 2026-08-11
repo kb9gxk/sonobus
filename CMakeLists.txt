@@ -15,6 +15,13 @@ if (WIN32)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
+# ASIO driver support needs the Steinberg ASIO SDK's iasiodrv.h at
+# ../asiosdk/common (see the HEADER_INCLUDES entry below) -- a
+# separately licensed SDK not vendored in this repo. Defaults on to
+# preserve existing local/official-release build behavior; CI
+# environments without the SDK available pass -DSONOBUS_ENABLE_ASIO=OFF.
+option(SONOBUS_ENABLE_ASIO "Enable ASIO audio driver support (requires the Steinberg ASIO SDK at ../asiosdk/common)" ON)
+
 # If we are compiling for Mac OS we want to target OS versions down to 10.9
 option(UniversalBinary "Build universal binary for mac" ON)
 
@@ -445,7 +452,7 @@ function(sono_add_custom_plugin_target target_name product_name formats is_instr
         JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1
 	JUCE_USE_WINDOWS_MEDIA_FORMAT=1
         JUCE_LOAD_CURL_SYMBOLS_LAZILY=1
-        JUCE_ASIO=1
+        JUCE_ASIO=$<BOOL:${SONOBUS_ENABLE_ASIO}>
         JUCE_WASAPI=1
         JUCE_DIRECTSOUND=0
         JUCE_JACK=1
