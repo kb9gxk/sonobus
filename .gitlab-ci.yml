@@ -1,0 +1,143 @@
+# CI for SonoBus (kb9gxk personal fork): builds the Windows Standalone
+# .exe + VST3 plugin via CMake + MSVC, for testing changes on Windows
+# before opening PRs against the upstream essej/sonobus project.
+#
+#   - GL-Runner2, tag `windows`: shell/PowerShell executor. Needs cmake
+#     and Inno Setup -- both installed via chocolatey on 2026-08-11
+#     (`choco install cmake -y --installargs 'ADD_CMAKE_TO_PATH=System'`
+#     and `choco install innosetup -y`), followed by a
+#     `Restart-Service gitlab-runner` so the already-running service
+#     picks up the new PATH entries (a running Windows service caches
+#     its environment at startup, same as any other process).
+#   - Visual Studio 2022 Build Tools is what's actually installed on
+#     this runner (not 2019, despite setupcmakewin.sh's hardcoded
+#     "-G 'Visual Studio 16 2019'") -- this pipeline invokes cmake
+#     directly with "-G 'Visual Studio 17 2022' -A x64" instead of
+#     using that script, to avoid depending on a VS version that isn't
+#     there. cmake's VS generator drives MSBuild directly, so no
+#     vcvarsall/environment setup is needed beyond VS being installed.
+#   - AAX and VST2 plugin formats are NOT built: both require
+#     proprietary SDKs (Avid AAX SDK -- gated behind Avid's developer
+#     program; Steinberg VST2 SDK -- discontinued/no longer publicly
+#     distributed since 2018) that aren't available here. Neither is
+#     required for the Standalone .exe or the VST3 plugin to work --
+#     they're just additional plugin *formats* (VST2 is superseded by
+#     VST3; AAX only matters for Avid Pro Tools specifically).
+#     CMakeLists.txt already makes both conditional on
+#     AAX_SDK_PATH/VST2_SDK_PATH being set, so if either SDK becomes
+#     available later: drop it on this runner and set the matching
+#     CI/CD variable to activate it -- no pipeline changes needed.
+#     Same reasoning for the 32-bit build the upstream release scripts
+#     (distwin.sh) also produce -- skipped here; 32-bit Windows is
+#     essentially extinct.
+#   - Code signing uses a SELF-SIGNED certificate (WIN_CODESIGN_PFX_B64
+#     + WIN_CODESIGN_PASSWORD project CI/CD variables, generated
+#     2026-08-11 on GL-Runner2, 5-year validity) -- NOT a real trusted
+#     certificate. Signed binaries will still trigger Windows
+#     SmartScreen/Defender warnings for anyone who downloads them; this
+#     only proves the signing mechanics work and gives a stable
+#     signature to compare against once a real certificate is
+#     purchased. Swap WIN_CODESIGN_PFX_B64/WIN_CODESIGN_PASSWORD for a
+#     real certificate's values later -- no other pipeline change
+#     needed. The PFX is stored base64-encoded, not as a raw binary
+#     file variable, because GitLab's variables API on this instance
+#     returns a bare "400 Bad Request" for a raw-binary multipart form
+#     value -- confirmed directly: the identical request with a
+#     plain-text value succeeded, the raw .pfx bytes failed, against
+#     both the public (gitlab.jpps.us) and internal (gitlab.tech.lan)
+#     hostnames, ruling out the separate Cloudflare-tunnel large-upload
+#     issue documented elsewhere. Decoded back to a .pfx file at the
+#     start of each signing step and deleted immediately after use.
+#
+# release/wininstaller-ci.iss is a trimmed-down copy of
+# release/wininstaller.iss (the upstream project's real installer
+# script): only the 64-bit Standalone .exe + VST3 components this
+# pipeline actually builds. release/wininstaller.iss itself is
+# untouched and remains the full script for a real release once
+# AAX/VST2/32-bit and a real certificate are all available.
+#
+# Two-tier trigger, same convention as the other jpps/kb9gxk CI files:
+# an ordinary branch push runs `build:windows` (zip artifact, no
+# installer -- for day-to-day "does this branch work on Windows"
+# testing). Pushing a version tag (e.g. `v1.7.3`) additionally runs
+# `package:windows-installer`.
+
+stages:
+  - build
+  - package
+
+variables:
+  # Preserve the CMake build directory between jobs on this persistent
+  # shell runner -- GitLab's default pre-checkout `git clean -ffdx`
+  # would otherwise wipe it every run, forcing a full from-scratch JUCE
+  # rebuild (many minutes) every single pipeline. Same reasoning as the
+  # target/ exclusion in this org's Rust projects' CI files.
+  GIT_CLEAN_FLAGS: -ffdx -e build/
+
+.on_tag_push: &on_tag_push
+  rules:
+    - if: $CI_COMMIT_TAG
+
+build:windows:
+  stage: build
+  tags: [windows]
+  script:
+    - |
+      $ErrorActionPreference = "Stop"
+      cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+      if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
+      cmake --build build --config Release --parallel
+      if ($LASTEXITCODE -ne 0) { throw "cmake build failed" }
+    - |
+      $ErrorActionPreference = "Stop"
+      [IO.File]::WriteAllBytes("$PWD\sonobus-codesign.pfx", [Convert]::FromBase64String($env:WIN_CODESIGN_PFX_B64))
+      $signtool = (Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe -ErrorAction Stop | Where-Object { $_.FullName -like "*\x64\*" } | Select-Object -First 1).FullName
+      & $signtool sign /f "$PWD\sonobus-codesign.pfx" /p "$env:WIN_CODESIGN_PASSWORD" /fd SHA256 /t http://timestamp.digicert.com "build\SonoBus_artefacts\Release\Standalone\SonoBus.exe"
+      if ($LASTEXITCODE -ne 0) { throw "signtool failed on Standalone exe" }
+      Remove-Item "$PWD\sonobus-codesign.pfx" -Force
+    - |
+      $ErrorActionPreference = "Stop"
+      $ref = $env:CI_COMMIT_REF_SLUG
+      $sha = $env:CI_COMMIT_SHORT_SHA
+      Remove-Item -Force -ErrorAction SilentlyContinue "sonobus-windows-x86_64-*.zip"
+      Remove-Item -Recurse -Force -ErrorAction SilentlyContinue release\SonoBus
+      # Staged directly under release\SonoBus -- matches the layout
+      # release/wininstaller.iss and release/wininstaller-ci.iss expect
+      # (Inno Setup resolves Source: paths relative to the .iss file's
+      # own directory, i.e. release\), same convention the upstream
+      # release/distwin.sh script already uses.
+      New-Item -ItemType Directory -Force -Path release\SonoBus\Plugins\VST3 | Out-Null
+      Copy-Item build\SonoBus_artefacts\Release\Standalone\SonoBus.exe release\SonoBus\
+      Copy-Item -Recurse -Force build\SonoBus_artefacts\Release\VST3\SonoBus.vst3 release\SonoBus\Plugins\VST3\
+      Copy-Item -Recurse -Force build\SonoBusInst_artefacts\Release\VST3\SonoBusInstrument.vst3 release\SonoBus\Plugins\VST3\
+      Copy-Item doc\README_WINDOWS.txt release\SonoBus\README.txt
+      Compress-Archive -Path release\SonoBus -DestinationPath "sonobus-windows-x86_64-$ref-$sha.zip" -Force
+  artifacts:
+    paths:
+      - sonobus-windows-x86_64-*.zip
+      - release/SonoBus/
+    expire_in: 30 days
+
+package:windows-installer:
+  stage: package
+  tags: [windows]
+  needs: [build:windows]
+  <<: *on_tag_push
+  script:
+    - |
+      $ErrorActionPreference = "Stop"
+      [IO.File]::WriteAllBytes("$PWD\sonobus-codesign.pfx", [Convert]::FromBase64String($env:WIN_CODESIGN_PFX_B64))
+      $signtool = (Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe -ErrorAction Stop | Where-Object { $_.FullName -like "*\x64\*" } | Select-Object -First 1).FullName
+      $version = $env:CI_COMMIT_TAG -replace '^v', ''
+      Remove-Item -Force -ErrorAction SilentlyContinue "SonoBus-*-Installer.exe"
+      New-Item -ItemType Directory -Force -Path instoutput | Out-Null
+      $iscc = "C:\Program Files (x86)\Inno Setup 6\iscc.exe"
+      $signCmd = "`"$signtool`" sign /fd SHA256 /f `"$PWD\sonobus-codesign.pfx`" /p `"$env:WIN_CODESIGN_PASSWORD`" /t http://timestamp.digicert.com `$f"
+      & $iscc /O"instoutput" "/Ssigntool=$signCmd" /DSBVERSION="$version" release\wininstaller-ci.iss
+      if ($LASTEXITCODE -ne 0) { throw "iscc failed" }
+      Remove-Item "$PWD\sonobus-codesign.pfx" -Force
+      Copy-Item "instoutput\SonoBus-$version-Installer.exe" "sonobus-$version-win-installer.exe"
+  artifacts:
+    paths:
+      - sonobus-*-win-installer.exe
+    expire_in: 30 days
