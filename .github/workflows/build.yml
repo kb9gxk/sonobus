@@ -238,5 +238,11 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: sonobus-android-debug
-          path: mobile/Builds/Android/app/build/outputs/apk/debug/*.apk
+          # The build.gradle has a "debug_" productFlavor alongside the
+          # "debug" buildType, which nests the actual output under an
+          # extra flavor-named directory AGP decides on its own --
+          # confirmed the plain debug/*.apk path found nothing even
+          # though the build itself succeeded. Recursive glob avoids
+          # having to hardcode that exact nesting.
+          path: mobile/Builds/Android/app/build/outputs/apk/**/*.apk
           retention-days: 30
