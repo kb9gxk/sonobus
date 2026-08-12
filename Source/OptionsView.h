@@ -75,6 +75,7 @@ public:
     std::function<Value*()> getAllowBluetoothInputValue; // = []() { return 0; };
     std::function<void()> updateSliderSnap; // = []() { return 0; };
     std::function<void()> updateKeybindings; // = []() { return 0; };
+    std::function<void()> updateConfirmOnQuit; // = []() { return 0; };
     std::function<bool(const String &)> setupLocalisation; // = []() { return 0; };
     std::function<void()> saveSettingsIfNeeded; // = []() { return 0; };
 
@@ -138,6 +139,7 @@ protected:
     std::unique_ptr<ToggleButton> mOptionsDisableShortcutButton;
     std::unique_ptr<ToggleButton> mOptionsRememberLocalSoloButton;
     std::unique_ptr<ToggleButton> mOptionsRememberPeerSoloButton;
+    std::unique_ptr<ToggleButton> mOptionsConfirmOnQuit;
     std::unique_ptr<TextButton> mOptionsSavePluginDefaultButton;
     std::unique_ptr<TextButton> mOptionsResetPluginDefaultButton;
 
@@ -185,6 +187,7 @@ protected:
     FlexBox optionsDisableShortcutsBox;
     FlexBox optionsRememberLocalSoloBox;
     FlexBox optionsRememberPeerSoloBox;
+    FlexBox optionsConfirmOnQuitBox;
     FlexBox optionsDefaultLevelBox;
     FlexBox optionsLanguageBox;
     FlexBox optionsAllowBluetoothBox;
