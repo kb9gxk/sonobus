@@ -163,6 +163,25 @@ jobs:
         run: |
           echo "sdk.dir=${ANDROID_SDK_ROOT}" > mobile/Builds/Android/local.properties
 
+      - name: Generate placeholder mipmap launcher icons
+        run: |
+          set -e
+          # AndroidManifest.xml references @mipmap/ic_launcher and
+          # @mipmap/ic_launcher_round, but the committed resources only
+          # have drawable-*/icon.png (older JUCE export convention) --
+          # no mipmap-* directories exist at all. This looks like a
+          # Projucer-regenerated resource that never got committed.
+          # Rather than touch the committed Android project, generate
+          # placeholder mipmap icons from the existing drawable icon
+          # for CI purposes only -- fine for a personal test build,
+          # not meant to produce the real app icon.
+          RES=mobile/Builds/Android/app/src/main/res
+          for density in ldpi mdpi hdpi xhdpi; do
+            mkdir -p "$RES/mipmap-$density"
+            cp "$RES/drawable-$density/icon.png" "$RES/mipmap-$density/ic_launcher.png"
+            cp "$RES/drawable-$density/icon.png" "$RES/mipmap-$density/ic_launcher_round.png"
+          done
+
       - name: Build debug APK
         working-directory: mobile/Builds/Android
         run: |
