@@ -197,22 +197,35 @@ jobs:
           # this job needs two different JDK versions.
           java-version: "11"
 
+      - name: Generate a throwaway signing keystore (testing only)
+        run: |
+          set -e
+          # Both debug and release buildTypes in build.gradle
+          # explicitly set signingConfig signingConfigs.juceSigning --
+          # there's no fallback to Android's normal auto-generated
+          # debug keystore. That signing config points at
+          # ~/.android/sonouploadnew.jks (Sonosaurus's real Play Store
+          # release keystore, which we don't have and shouldn't try to
+          # obtain) and reads its store/key passwords + alias from
+          # Gradle properties. Confirmed the actual compile succeeds
+          # fine without it -- only the final validateSigningDebug_Debug
+          # step fails ("Keystore file ... not found"). Generating a
+          # throwaway keystore at the exact expected path, with
+          # credentials matching what's passed via -P below, is the
+          # same spirit as the Windows self-signed cert: proves the
+          # build produces a real, installable APK for testing, not a
+          # real release signature.
+          mkdir -p ~/.android
+          keytool -genkeypair -v -keystore ~/.android/sonouploadnew.jks -storetype jks \
+            -alias sonobus-ci -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass cidebugonly -keypass cidebugonly \
+            -dname "CN=SonoBus CI, OU=Testing, O=kb9gxk, C=US"
+
       - name: Build debug APK
         working-directory: mobile/Builds/Android
         run: |
           chmod +x gradlew
-          # build.gradle's signingConfigs.juceSigning block references
-          # sonoupload_keystore_password/sonoupload_key/
-          # sonoupload_key_password unconditionally at configuration
-          # time (Sonosaurus's own real Play Store release signing
-          # credentials, which we don't have and shouldn't try to
-          # obtain) -- Gradle fails evaluating the project at all
-          # without these three properties defined, even for a debug
-          # build that doesn't end up using that signing config.
-          # Passing harmless placeholders (matching buildrelease.sh's
-          # own -P calling convention) satisfies property resolution
-          # without touching the committed build.gradle.
-          ./gradlew assembleDebug -Psonoupload_keystore_password=unused -Psonoupload_key_password=unused -Psonoupload_key=unused
+          ./gradlew assembleDebug -Psonoupload_keystore_password=cidebugonly -Psonoupload_key_password=cidebugonly -Psonoupload_key=sonobus-ci
 
       - uses: actions/upload-artifact@v4
         with:
