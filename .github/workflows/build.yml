@@ -139,12 +139,14 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          # JDK 17 crashed javac with a StackOverflowError (no message)
-          # compiling this project's Java sources -- a known
-          # incompatibility pattern between newer JDKs and this era of
-          # Gradle/AGP (Gradle 7.5.1). JDK 11 is the conventional match
-          # for this toolchain generation.
-          java-version: "11"
+          # sdkmanager itself (the version bundled on this runner's
+          # cmdline-tools) is compiled for JDK 17+ (class file version
+          # 61.0) -- fails with UnsupportedClassVersionError under
+          # JDK 11. Switched to JDK 11 further down, right before the
+          # actual Gradle build, which needs the OPPOSITE (javac
+          # crashes under 17) -- these are two different tools with
+          # two different JDK requirements in the same job.
+          java-version: "17"
 
       - name: Install the exact NDK/CMake versions this project pins
         run: |
@@ -186,6 +188,14 @@ jobs:
             cp "$RES/drawable-$density/icon.png" "$RES/mipmap-$density/ic_launcher.png"
             cp "$RES/drawable-$density/icon.png" "$RES/mipmap-$density/ic_launcher_round.png"
           done
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # Switching to JDK 11 here, for the actual Gradle/javac
+          # build -- see the earlier setup-java step's comment for why
+          # this job needs two different JDK versions.
+          java-version: "11"
 
       - name: Build debug APK
         working-directory: mobile/Builds/Android
