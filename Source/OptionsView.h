@@ -83,6 +83,7 @@ public:
 protected:
 
     void initializeLanguages();
+    void updatePacketRedundancySliderColour(int redundancy);
 
     void configEditor(TextEditor *editor, bool passwd = false);
     void configLabel(Label *label, bool val=false);
@@ -150,6 +151,9 @@ protected:
     std::unique_ptr<Label> mOptionsAutoDropThreshLabel;
     std::unique_ptr<Slider> mOptionsAutoDropThreshSlider;
 
+    std::unique_ptr<Label> mOptionsPacketRedundancyLabel;
+    std::unique_ptr<Slider> mOptionsPacketRedundancySlider;
+
     std::unique_ptr<SonoChoiceButton> mOptionsLanguageChoice;
     std::unique_ptr<Label> mOptionsLanguageLabel;
     std::unique_ptr<ToggleButton> mOptionsUnivFontButton;
@@ -192,6 +196,7 @@ protected:
     FlexBox optionsLanguageBox;
     FlexBox optionsAllowBluetoothBox;
     FlexBox optionsAutoDropThreshBox;
+    FlexBox optionsPacketRedundancyBox;
     FlexBox optionsPluginDefaultBox;
 
     FlexBox recOptionsBox;
