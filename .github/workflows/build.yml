@@ -139,7 +139,12 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          # JDK 17 crashed javac with a StackOverflowError (no message)
+          # compiling this project's Java sources -- a known
+          # incompatibility pattern between newer JDKs and this era of
+          # Gradle/AGP (Gradle 7.5.1). JDK 11 is the conventional match
+          # for this toolchain generation.
+          java-version: "11"
 
       - name: Install the exact NDK/CMake versions this project pins
         run: |
