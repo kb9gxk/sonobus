@@ -1,0 +1,149 @@
+name: Build (Windows, macOS, Android)
+
+# Personal multi-platform build for testing, on kb9gxk's own GitHub fork.
+# Complements (doesn't replace) the existing GitLab CI, which only
+# builds Windows on GL-Runner2 -- see .gitlab-ci.yml for that pipeline's
+# own notes. This workflow uses GitHub-hosted runners exclusively, so
+# none of GL-Runner2's LocalSystem-service quirks (broken VS Setup COM
+# detection, missing C++ workload) apply here -- these runner images
+# ship Visual Studio/Xcode/Android SDK fully preinstalled and run
+# actions as a normal user account.
+#
+# Formats built, matching what upstream's own CMakeLists.txt already
+# defaults to per-platform (see FormatsToBuild in CMakeLists.txt) minus
+# AAX/VST2, which both need proprietary SDKs unavailable here (see
+# .gitlab-ci.yml's own comment for why):
+#   - Windows: Standalone + VST3
+#   - macOS:   Standalone + VST3 + AU (AU needs no extra SDK, unlike
+#              AAX/VST2, and CMakeLists.txt already adds it
+#              automatically on APPLE)
+#   - Android: Standalone app (.apk) only -- that's what
+#              mobile/SonoBusMobile.jucer's Gradle project builds
+#
+# Signing:
+#   - Windows: reuses the same self-signed cert as GitLab CI
+#     (WIN_CODESIGN_PFX_B64 + WIN_CODESIGN_PASSWORD repo secrets, base64
+#     for the same reason noted in .gitlab-ci.yml -- raw binary secret
+#     values misbehave in some transports; base64 sidesteps it
+#     uniformly rather than debugging per-platform). NOT a real trusted
+#     certificate -- still triggers SmartScreen warnings.
+#   - macOS: unsigned. Real notarization needs a paid Apple Developer
+#     account we don't have, and ad-hoc self-signing wouldn't satisfy
+#     Gatekeeper either, so there's no practical benefit to signing at
+#     all here -- unlike Windows, there's no partial credit for a
+#     self-signed cert. Users will need to right-click > Open the
+#     first time (standard Gatekeeper bypass for unsigned apps).
+#   - Android: standard Gradle debug build (assembleDebug), signed
+#     with the auto-generated Android debug keystore. This is NOT the
+#     same key as Sonosaurus's real Play Store release signing (that
+#     needs sonoupload_keystore_password/sonoupload_key_password/
+#     sonoupload_key, which we don't have and shouldn't try to obtain
+#     -- those are Sonosaurus's own release credentials) -- a debug
+#     build installs and runs fine for testing, it just can't replace
+#     an existing release install of the real signed app on the same
+#     device.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure (SONOBUS_ENABLE_ASIO=OFF -- proprietary SDK unavailable here)
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DSONOBUS_ENABLE_ASIO=OFF
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Sign Standalone exe (self-signed, testing only)
+        shell: pwsh
+        env:
+          WIN_CODESIGN_PFX_B64: ${{ secrets.WIN_CODESIGN_PFX_B64 }}
+          WIN_CODESIGN_PASSWORD: ${{ secrets.WIN_CODESIGN_PASSWORD }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          [IO.File]::WriteAllBytes("$PWD\sonobus-codesign.pfx", [Convert]::FromBase64String($env:WIN_CODESIGN_PFX_B64.Trim()))
+          $signtool = (Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe -ErrorAction Stop | Where-Object { $_.FullName -like "*\x64\*" } | Select-Object -First 1).FullName
+          & $signtool sign /f "$PWD\sonobus-codesign.pfx" /p "$env:WIN_CODESIGN_PASSWORD" /fd SHA256 /t http://timestamp.digicert.com "build\SonoBus_artefacts\Release\Standalone\SonoBus.exe"
+          if ($LASTEXITCODE -ne 0) { throw "signtool failed" }
+          Remove-Item "$PWD\sonobus-codesign.pfx" -Force
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path dist\SonoBus\Plugins\VST3 | Out-Null
+          Copy-Item build\SonoBus_artefacts\Release\Standalone\SonoBus.exe dist\SonoBus\
+          Copy-Item -Recurse -Force build\SonoBus_artefacts\Release\VST3\SonoBus.vst3 dist\SonoBus\Plugins\VST3\
+          Copy-Item -Recurse -Force build\SonoBusInst_artefacts\Release\VST3\SonoBusInstrument.vst3 dist\SonoBus\Plugins\VST3\
+          Copy-Item doc\README_WINDOWS.txt dist\SonoBus\README.txt
+          Compress-Archive -Path dist\SonoBus -DestinationPath sonobus-windows-x86_64.zip -Force
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sonobus-windows-x86_64
+          path: sonobus-windows-x86_64.zip
+          retention-days: 30
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Package (unsigned)
+        run: |
+          set -e
+          mkdir -p dist/SonoBus/Plugins/VST3 dist/SonoBus/Plugins/AU
+          cp -R build/SonoBus_artefacts/Release/Standalone/SonoBus.app dist/SonoBus/
+          cp -R build/SonoBus_artefacts/Release/VST3/SonoBus.vst3 dist/SonoBus/Plugins/VST3/
+          cp -R build/SonoBusInst_artefacts/Release/VST3/SonoBusInstrument.vst3 dist/SonoBus/Plugins/VST3/
+          cp -R build/SonoBus_artefacts/Release/AU/SonoBus.component dist/SonoBus/Plugins/AU/
+          ditto -c -k --sequesterRsrc dist/SonoBus sonobus-macos.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sonobus-macos
+          path: sonobus-macos.zip
+          retention-days: 30
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install the exact NDK version this project pins
+        run: |
+          set -e
+          echo "y" | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;25.2.9519653"
+
+      - name: Point local.properties at this runner's SDK
+        run: |
+          echo "sdk.dir=${ANDROID_SDK_ROOT}" > mobile/Builds/Android/local.properties
+
+      - name: Build debug APK
+        working-directory: mobile/Builds/Android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sonobus-android-debug
+          path: mobile/Builds/Android/app/build/outputs/apk/debug/*.apk
+          retention-days: 30
