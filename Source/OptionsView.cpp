@@ -277,6 +277,9 @@ OptionsView::OptionsView(SonobusAudioProcessor& proc, std::function<AudioDeviceM
     mOptionsRememberPeerSoloButton = std::make_unique<ToggleButton>(TRANS("Remember Peer Solo"));
     mOptionsRememberPeerSoloButton->addListener(this);
 
+    mOptionsConfirmOnQuit = std::make_unique<ToggleButton>(TRANS("Require confirmation on quit"));
+    mOptionsConfirmOnQuit->addListener(this);
+
 #if JUCE_IOS
     if (JUCEApplicationBase::isStandaloneApp()) {
         mOptionsAllowBluetoothInput = std::make_unique<ToggleButton>(TRANS("Allow Bluetooth Input"));
@@ -405,6 +408,7 @@ OptionsView::OptionsView(SonobusAudioProcessor& proc, std::function<AudioDeviceM
     mOptionsComponent->addAndMakeVisible(mOptionsDisableShortcutButton.get());
     mOptionsComponent->addAndMakeVisible(mOptionsRememberLocalSoloButton.get());
     mOptionsComponent->addAndMakeVisible(mOptionsRememberPeerSoloButton.get());
+    mOptionsComponent->addAndMakeVisible(mOptionsConfirmOnQuit.get());
 
 
 
@@ -650,6 +654,7 @@ void OptionsView::updateState(bool ignorecheck)
     mOptionsDisableShortcutButton->setToggleState(processor.getDisableKeyboardShortcuts(), dontSendNotification);
     mOptionsRememberLocalSoloButton->setToggleState(processor.getRememberLocalTrackSolo(), dontSendNotification);
     mOptionsRememberPeerSoloButton->setToggleState(processor.getRememberPeerSolo(), dontSendNotification);
+    mOptionsConfirmOnQuit->setToggleState(processor.getConfirmOnQuit(), dontSendNotification);
 
     uint32 recmask = processor.getDefaultRecordingOptions();
 
@@ -815,6 +820,15 @@ void OptionsView::updateLayout()
     optionsRememberPeerSoloBox.items.add(FlexItem(10, 12).withFlex(0));
     optionsRememberPeerSoloBox.items.add(FlexItem(180, minpassheight, *mOptionsRememberPeerSoloButton).withMargin(0).withFlex(1));
 
+    // PR #230 originally reused optionsDisableShortcutsBox for this
+    // row (clearing/reassigning it a second time), which would have
+    // silently broken the "Disable keyboard shortcuts" row's layout --
+    // uses its own FlexBox member instead.
+    optionsConfirmOnQuitBox.items.clear();
+    optionsConfirmOnQuitBox.flexDirection = FlexBox::Direction::row;
+    optionsConfirmOnQuitBox.items.add(FlexItem(10, 12).withFlex(0));
+    optionsConfirmOnQuitBox.items.add(FlexItem(180, minpassheight, *mOptionsConfirmOnQuit).withMargin(0).withFlex(1));
+
 
     optionsAllowBluetoothBox.items.clear();
     optionsAllowBluetoothBox.flexDirection = FlexBox::Direction::row;
@@ -862,6 +876,7 @@ void OptionsView::updateLayout()
     optionsBox.items.add(FlexItem(100, minpassheight, optionsDisableShortcutsBox).withMargin(2).withFlex(0));
     optionsBox.items.add(FlexItem(100, minpassheight, optionsRememberLocalSoloBox).withMargin(2).withFlex(0));
     optionsBox.items.add(FlexItem(100, minpassheight, optionsRememberPeerSoloBox).withMargin(2).withFlex(0));
+    optionsBox.items.add(FlexItem(100, minpassheight, optionsConfirmOnQuitBox).withMargin(2).withFlex(0));
     optionsBox.items.add(FlexItem(100, minpassheight, optionsDynResampleBox).withMargin(2).withFlex(0));
 
     if ( ! JUCEApplicationBase::isStandaloneApp()) {
@@ -1196,6 +1211,13 @@ void OptionsView::buttonClicked (Button* buttonThatWasClicked)
     else if (buttonThatWasClicked == mOptionsRememberPeerSoloButton.get()) {
         processor.setRememberPeerSolo(mOptionsRememberPeerSoloButton->getToggleState());
     }
+    else if (buttonThatWasClicked == mOptionsConfirmOnQuit.get()) {
+        bool newval = mOptionsConfirmOnQuit->getToggleState();
+        processor.setConfirmOnQuit(newval);
+        if (updateConfirmOnQuit) {
+            updateConfirmOnQuit();
+        }
+    }
     else if (buttonThatWasClicked == mOptionsSavePluginDefaultButton.get()) {
         processor.saveCurrentAsDefaultPluginSettings();
     }
@@ -1416,4 +1438,3 @@ void OptionsView::paint(Graphics & g)
     g.drawRoundedRectangle(bounds.toFloat(), 6.0f, 0.5f);
 */
 }
-
