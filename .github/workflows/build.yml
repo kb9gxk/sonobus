@@ -141,10 +141,23 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Install the exact NDK version this project pins
+      - name: Install the exact NDK/CMake versions this project pins
         run: |
           set -e
-          echo "y" | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;25.2.9519653"
+          # app/build.gradle sets ndkVersion twice -- 25.2.9519653 near
+          # the top, then "22.0.7026061" again right before the closing
+          # brace. Groovy DSL just runs both assignments in order, so
+          # the later one silently wins; confirmed directly (Gradle's
+          # own log shows it resolving/installing 22.0.7026061, not the
+          # first value) rather than assumed from reading the file.
+          # Installing both here so neither declaration can fail,
+          # without touching this committed (and possibly
+          # accidentally-duplicated) upstream file.
+          # cmake version is separately pinned in the same file's
+          # externalNativeBuild block ("3.22.1") -- AGP requires that
+          # exact version resolvable via the SDK's own cmake package,
+          # not just any cmake found on PATH.
+          echo "y" | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;25.2.9519653" "ndk;22.0.7026061" "cmake;3.22.1"
 
       - name: Point local.properties at this runner's SDK
         run: |
