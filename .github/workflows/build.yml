@@ -110,7 +110,17 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"
+        # arm64 only, not universal (x86_64;arm64), for CI: a universal
+        # build roughly doubles compile work (everything built twice,
+        # once per arch), and combined with a slow/possibly-hung
+        # macos-14 runner today (GitHub had infra issues), a run sat at
+        # over an hour with no way to tell progress from a hang via
+        # partial logs on an in-progress job. Scoped to CI only --
+        # matches the same "good enough for personal testing" tradeoff
+        # already accepted for unsigned Mac builds and debug-only
+        # Android; local/official release builds still build universal
+        # by default (UniversalBinary option in CMakeLists.txt).
+        run: cmake -S . -B build -DCMAKE_OSX_ARCHITECTURES="arm64"
 
       - name: Build
         run: cmake --build build --config Release --parallel
