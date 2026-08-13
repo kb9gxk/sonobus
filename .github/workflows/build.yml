@@ -120,7 +120,17 @@ jobs:
         # already accepted for unsigned Mac builds and debug-only
         # Android; local/official release builds still build universal
         # by default (UniversalBinary option in CMakeLists.txt).
-        run: cmake -S . -B build -DCMAKE_OSX_ARCHITECTURES="arm64"
+        # -DCMAKE_BUILD_TYPE=Release: the default generator here
+        # (Unix Makefiles) is single-config, so "--config Release" on
+        # the build command below is a no-op for it (that flag only
+        # does anything for multi-config generators like Windows' VS
+        # generator) -- without CMAKE_BUILD_TYPE set at configure time,
+        # JUCE's artifact paths come out without a "Release/" segment
+        # at all (confirmed: the actual build output was
+        # SonoBus_artefacts/Standalone/SonoBus.app, not
+        # .../Release/Standalone/SonoBus.app, breaking the packaging
+        # step below which assumed the Windows-style nested path).
+        run: cmake -S . -B build -DCMAKE_OSX_ARCHITECTURES="arm64" -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
         run: cmake --build build --config Release --parallel
