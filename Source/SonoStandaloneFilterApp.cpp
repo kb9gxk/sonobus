@@ -125,6 +125,10 @@ public:
     bool doImmediateQuit = false;
     bool doHeadless = false;
     String loadSetupFilename;
+    // Headless audio layout (--input-channels, --input-groups, --send-channels)
+    int headlessInputChannels = 0;
+    Array<int> headlessInputGroups;
+    int headlessSendChannels = -1; // -1 = leave as saved; 0 = match inputs, 1 = mono, 2 = stereo
     String cmdlineArgUrl;
 
     virtual StandalonePluginHolder* createHeadlessPlugin ()
@@ -315,6 +319,15 @@ public:
         const String loadSetupSpec("-l|--load-setup");
         const String loadSetupSpecDesc("-l|--load-setup <setup-filename>");
 
+        const String inputChannelsSpec("--input-channels");
+        const String inputChannelsSpecDesc("--input-channels <count>");
+
+        const String inputGroupsSpec("--input-groups");
+        const String inputGroupsSpecDesc("--input-groups <n,n,...>");
+
+        const String sendChannelsSpec("--send-channels");
+        const String sendChannelsSpecDesc("--send-channels <match|mono|stereo>");
+
         
 
         app.addCommand ({ helpSpec, helpSpec, TRANS("Prints the list of commands"), {}, nullptr });
@@ -349,6 +362,13 @@ public:
             TRANS("The setup file can be created using the Save Setup feature from the full application, and includes any device selection, input mixer setup, and all other options. If you don't specify a full or relative pathname it will look for a preset file by that name in the last used setup folder."),
             nullptr
         });
+
+        app.addCommand ({ inputChannelsSpec, inputChannelsSpecDesc,
+            TRANS("Open this many audio input channels (headless)."), {}, nullptr });
+        app.addCommand ({ inputGroupsSpec, inputGroupsSpecDesc,
+            TRANS("Split the inputs into channel groups of these sizes, e.g. 2,2 (headless)."), {}, nullptr });
+        app.addCommand ({ sendChannelsSpec, sendChannelsSpecDesc,
+            TRANS("How many channels to send: match (all inputs), mono or stereo (headless)."), {}, nullptr });
 
         app.addCommand ({ headlessSpec, headlessSpecDesc,
             TRANS("If specified, no GUI will be used and the application will be run headless."),
@@ -411,6 +431,25 @@ public:
         auto setupfile = arglist.removeValueForOption(loadSetupSpec);
         if (setupfile.isNotEmpty()) {
             loadSetupFilename = setupfile;
+        }
+
+        auto inchans = arglist.removeValueForOption(inputChannelsSpec);
+        if (inchans.isNotEmpty()) {
+            headlessInputChannels = jlimit(1, 64, inchans.getIntValue());
+        }
+
+        auto ingroups = arglist.removeValueForOption(inputGroupsSpec);
+        for (auto & g : StringArray::fromTokens(ingroups, ",", "")) {
+            if (g.trim().getIntValue() > 0) headlessInputGroups.add(g.trim().getIntValue());
+        }
+
+        auto sendchans = arglist.removeValueForOption(sendChannelsSpec).trim().toLowerCase();
+        if (sendchans == "match") headlessSendChannels = 0;
+        else if (sendchans == "mono") headlessSendChannels = 1;
+        else if (sendchans == "stereo") headlessSendChannels = 2;
+        else if (sendchans.isNotEmpty()) {
+            std::cout << TRANS("Error: --send-channels must be match, mono or stereo") << std::endl;
+            doImmediateQuit = true;
         }
 
 
@@ -549,6 +588,8 @@ public:
                 }
 
 
+                applyHeadlessAudioLayout(sonoproc);
+
                 if (doInitialConnect) {
                     DBG("CONNECTING HEADLESS INITIAL");
                     sonoproc->connectToServer(cmdlineConnInfo.serverHost, cmdlineConnInfo.serverPort, cmdlineConnInfo.userName, cmdlineConnInfo.userPassword);
@@ -574,6 +615,37 @@ public:
 
     }
 
+
+    // Command-line audio layout for headless use: open N inputs, group them, choose send channels.
+    void applyHeadlessAudioLayout(SonobusAudioProcessor * sonoproc)
+    {
+        if (headlessInputChannels > 0) {
+            auto & dm = pluginHolder->deviceManager;
+            AudioDeviceManager::AudioDeviceSetup setup;
+            dm.getAudioDeviceSetup(setup);
+            setup.useDefaultInputChannels = false;
+            setup.inputChannels.clear();
+            setup.inputChannels.setRange(0, headlessInputChannels, true);
+            auto err = dm.setAudioDeviceSetup(setup, true);
+            if (err.isNotEmpty()) std::cerr << "Input channels: " << err << std::endl;
+            int active = 0;
+            if (auto * dev = dm.getCurrentAudioDevice()) active = dev->getActiveInputChannels().countNumberOfSetBits();
+            std::cerr << "Headless inputs open: " << active << std::endl;
+        }
+        if (headlessInputGroups.size() > 0) {
+            sonoproc->setInputGroupCount(headlessInputGroups.size());
+            int start = 0;
+            for (int i = 0; i < headlessInputGroups.size(); ++i) {
+                sonoproc->setInputGroupChannelStartAndCount(i, start, headlessInputGroups[i]);
+                start += headlessInputGroups[i];
+            }
+        }
+        if (headlessSendChannels >= 0) {
+            if (auto * p = sonoproc->getValueTreeState().getParameter(SonobusAudioProcessor::paramSendChannels)) {
+                p->setValueNotifyingHost(p->convertTo0to1((float) headlessSendChannels));
+            }
+        }
+    }
 
     bool loadSettingsFromFile(const File & file)
     {
