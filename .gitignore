@@ -4,3 +4,6 @@ build32
 buildXcode
 release/1.*
 mobile/Builds
+
+# Local working material: not published to GitLab
+/docs/superpowers/
