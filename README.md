@@ -1,5 +1,13 @@
-
 # SonoBus
+
+> **This is a fork.** It is [SonoBus](https://github.com/sonosaurus/sonobus) by Jesse Chappell, licensed GPLv3 like the original, with a few changes:
+>
+> - A username that is already taken is retried before falling back to an auto-incremented name ([PR #292](https://github.com/sonosaurus/sonobus/pull/292) to upstream).
+> - Local-track and peer solo state persists across restarts, with new "Remember Local Track Solo" and "Remember Peer Solo" options ([PR #291](https://github.com/sonosaurus/sonobus/pull/291) to upstream).
+> - Headless mode takes `--input-channels=N`, `--input-groups=n,n,...` and `--send-channels=match|mono|stereo`, so an unattended sender can send true stereo or several channel groups without a saved GUI setup. This one is not proposed upstream.
+> - ASIO support is optional, and there is CI for Windows, macOS and Android builds.
+>
+> For the official app, downloads and support, use [sonobus.net](https://sonobus.net).
 
 SonoBus is an easy to use application for streaming high-quality, low-latency peer-to-peer audio between devices over the internet or a local network.
 
