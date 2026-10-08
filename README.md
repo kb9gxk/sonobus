@@ -30,7 +30,7 @@ intercepted, please keep that in mind. All audio is sent directly between users 
 # Installing
 
 ## Windows and Mac
-There are binary releases for macOS and Windows available at [sonobus.net](https://sonobus.net) or in the releases of this repository on GitHub.
+There are binary releases for macOS and Windows available at [sonobus.net](https://sonobus.net) or in the [releases of the upstream repository](https://github.com/sonosaurus/sonobus/releases) on GitHub. This fork does not publish its own binaries.
 
 ## Linux
 
